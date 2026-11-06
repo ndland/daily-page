@@ -1,0 +1,25 @@
+{
+  "name": "daily-page",
+  "version": "0.1.0",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "build": "tsc --noEmit && node esbuild.config.mjs production",
+    "dev": "node esbuild.config.mjs",
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "author": "Nick Land",
+  "license": "UNLICENSED",
+  "description": "Hobonichi-style daily page for Obsidian",
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "esbuild": "^0.28.2",
+    "jsdom": "^31.0.0",
+    "obsidian": "^1.14.4",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  },
+  "private": true
+}

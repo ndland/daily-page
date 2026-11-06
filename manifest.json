@@ -1,0 +1,9 @@
+{
+  "id": "daily-page",
+  "name": "Daily Page",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Hobonichi-style daily page: a timestamped timeline, side notes, and a checklist.",
+  "author": "Nick Land",
+  "isDesktopOnly": true
+}
