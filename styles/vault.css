@@ -1,0 +1,19 @@
+/*
+ * Vault-only rules, added to the snippet after the plugin stylesheet. They are not used by the
+ * plugin.
+ */
+
+/* The raw daily-page data is drawn by the view, not shown as text. Match on the language name
+   wherever it appears, because Obsidian's class names differ between reading view and the editor. */
+[class*="language-daily-page"] {
+  display: none !important;
+}
+
+/* Messages from the view, for example a refused edit. */
+.daily-page__message {
+  margin-bottom: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #ff79c6;
+  color: #f8f8f2;
+  font-size: 0.85rem;
+}
