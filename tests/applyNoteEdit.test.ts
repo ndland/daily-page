@@ -166,7 +166,7 @@ describe("undoEdit", () => {
 describe("applyNoteEdit, further cases", () => {
   it("keeps one checklist when a note mixes CRLF and LF line endings", async () => {
     // The heading ends in LF, the rest in CRLF. The page must still find its one checklist.
-    const mixed = "## Timeline\r\n- 09:00-10:00 Email\n## Checklist\r\n- [ ] Walk\r\n";
+    const mixed = "```daily-page\r\n## Timeline\r\n- 09:00-10:00 Email\n## Checklist\r\n- [ ] Walk\r\n```\r\n";
     const vault = new FakeVault(mixed);
     const result = await applyNoteEdit(vault.asVault(), FILE, (scope) => appendChecklistItem(scope, "Read"), NOW);
 

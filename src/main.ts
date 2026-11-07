@@ -58,7 +58,8 @@ function splitLines(content: string): string[] {
 export default class DailyPagePlugin extends Plugin {
   settings: DailyPageSettings = { ...DEFAULT_SETTINGS };
   private notes!: NoteCreator<TFile>;
-  private pages!: PageEditor;
+  /** Shared with the vault view, so both use one undo record and one write queue. */
+  pages!: PageEditor;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -151,6 +152,16 @@ export default class DailyPagePlugin extends Plugin {
     const file = this.app.vault.getAbstractFileByPath(path);
     if (!(file instanceof TFile)) {
       new Notice("The note could not be found.");
+      return;
+    }
+    try {
+      const content = await this.app.vault.read(file);
+      if (countDailyPageBlocks(splitLines(content)) > 1) {
+        new Notice(MULTIPLE_BLOCKS);
+        return;
+      }
+    } catch (error) {
+      new Notice(`The note could not be read: ${reasonOf(error)}`);
       return;
     }
     const message = await this.pages.edit(file, edit);

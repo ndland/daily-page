@@ -33,14 +33,13 @@ describe("scopeOf", () => {
     expect(scopeOf(note)).toEqual({ start: 3, end: 7 });
   });
 
-  it("falls back to the whole note when there is no block", () => {
-    expect(scopeOf(["## Timeline", "- 09:00- Email"])).toEqual({ start: 0, end: 2 });
+  it("has no page for a note with no block, so nothing in it is edited", () => {
+    expect(scopeOf(["## Timeline", "- 09:00- Email"])).toBeNull();
   });
 
-  it("falls back to the whole note when the block holds no page section", () => {
-    // Notes from before the block held the data: the sections sit outside an empty fence.
-    const legacy = ["```daily-page", "```", "## Timeline", "- 09:00- Email"];
-    expect(scopeOf(legacy)).toEqual({ start: 0, end: 4 });
+  it("treats an empty closed block as the page, and ignores sections outside it", () => {
+    const outside = ["```daily-page", "```", "## Timeline", "- 09:00- Email"];
+    expect(scopeOf(outside)).toEqual({ start: 1, end: 1 });
   });
 
   it("uses the block when it holds only a Three things section", () => {

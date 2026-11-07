@@ -26,8 +26,11 @@ const PLUGIN_ID = "daily-page";
 
 const MULTIPLE_BLOCKS = "This note has more than one daily page. Keep one daily-page block, then reload.";
 
-/** One editor for this view, so its edits are queued in the order they are made. */
-const pages = new PageEditor(app.vault, () => new Date());
+/**
+ * The plugin's editor when the plugin is enabled, so an undo in the plugin sees the edits made in the
+ * view and the other way round. The view makes its own editor only when the plugin is off.
+ */
+const pages: PageEditor = app.plugins?.plugins?.[PLUGIN_ID]?.pages ?? new PageEditor(app.vault, () => new Date());
 
 /** A short message at the top of the page, for example when an edit is refused. */
 function showMessage(text: string): void {
@@ -71,7 +74,11 @@ async function draw(): Promise<void> {
     source = await dv.io.load(path);
   } catch (error) {
     dv.container.replaceChildren();
-    showMessage(`The note could not be read: ${reasonOf(error)}`);
+    // A notice that stays, since an empty view with no explanation would look like a broken note.
+    const notice = document.createElement("div");
+    notice.className = "daily-page__message";
+    notice.textContent = 'The note could not be read: ' + reasonOf(error);
+    dv.container.appendChild(notice);
     return;
   }
   const lines = source.split(/\r?\n/);

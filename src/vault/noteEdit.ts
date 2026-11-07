@@ -1,7 +1,10 @@
 import type { TFile, Vault } from "obsidian";
 import type { ScopeEdit } from "../entries/edit";
 import { minutesOfDay } from "../logic/time";
-import { NO_PAGE_MESSAGE, replaceScope, scopeOf } from "../logic/scope";
+import { NO_PAGE_MESSAGE, countDailyPageBlocks, replaceScope, scopeOf } from "../logic/scope";
+
+/** Shown when a note has two daily-page blocks, so a write would not know which one the page is. */
+const MULTIPLE_BLOCKS = "This note has more than one daily page. Keep one daily-page block, then reload.";
 
 /** The page's lines before and after one edit. Undo uses these, and nothing outside the page. */
 export interface EditRecord {
@@ -22,7 +25,7 @@ type TextResult =
 /**
  * A note split into its lines, with the line ending that follows each one. The last ending is "",
  * since the last line has none. Keeping the endings lets an edit change the page's lines and leave
- * every other byte of the note as it was.
+ * every byte outside the page as it was.
  */
 interface SplitNote {
   lines: string[];
@@ -68,6 +71,7 @@ function dominantLineEnding(content: string): string {
  */
 export function applyToText(content: string, edit: ScopeEdit, minute: number): TextResult {
   const { lines, endings } = splitKeepingEndings(content);
+  if (countDailyPageBlocks(lines) > 1) return { ok: false, message: MULTIPLE_BLOCKS };
   const scope = scopeOf(lines);
   if (!scope) return { ok: false, message: NO_PAGE_MESSAGE };
   const before = lines.slice(scope.start, scope.end);
