@@ -27,8 +27,11 @@ export function isFreshForDay(cache: StoredQuote | null, today: Date): boolean {
 }
 
 /**
- * Returns the quote to show. The source is called at most once per day. If it fails,
- * the most recent cached quote is shown; with no cache, nothing is shown.
+ * Returns the quote to show. The source is asked only when no quote for today is cached. If the
+ * request fails, or the new quote cannot be stored, the most recent cached quote is shown; with no
+ * cache, nothing is shown. A failed request is not retried by this function. The source itself
+ * limits how often it really asks (see throttle.ts), so an outage costs one request per interval,
+ * not one per render.
  */
 export async function loadDailyQuote(
   store: QuoteStore,

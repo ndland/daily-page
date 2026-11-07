@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dateBlock, dayOfYear, monthGrid } from "../src/logic/calendar";
+import { dateBlock, dayOfYear, isoWeek, monthGrid } from "../src/logic/calendar";
 import { moonPhase } from "../src/logic/moon";
 
 describe("dateBlock", () => {
@@ -43,6 +43,32 @@ describe("monthGrid", () => {
   it("starts February 2026 on a Sunday, so the first row has six blanks", () => {
     // 1 February 2026 is a Sunday.
     expect(monthGrid(2026, 1)[0]).toEqual([null, null, null, null, null, null, 1]);
+  });
+});
+
+describe("isoWeek", () => {
+  it("gives week 45 for Friday 2026-11-06", () => {
+    expect(isoWeek(new Date(2026, 10, 6))).toBe(45);
+  });
+
+  it("puts Monday 2026-11-02 and Sunday 2026-11-08 in the same week", () => {
+    expect(isoWeek(new Date(2026, 10, 2))).toBe(isoWeek(new Date(2026, 10, 8)));
+  });
+
+  it("gives week 1 for 1 January 2026, a Thursday", () => {
+    expect(isoWeek(new Date(2026, 0, 1))).toBe(1);
+  });
+
+  it("gives week 1 for Monday 29 December 2025, which belongs to 2026's week 1", () => {
+    expect(isoWeek(new Date(2025, 11, 29))).toBe(1);
+  });
+
+  it("gives week 53 for 1 January 2027, since 2026 has 53 ISO weeks", () => {
+    expect(isoWeek(new Date(2027, 0, 1))).toBe(53);
+  });
+
+  it("gives week 1 for Monday 30 December 2024, since 2025 starts on a Wednesday", () => {
+    expect(isoWeek(new Date(2024, 11, 30))).toBe(1);
   });
 });
 

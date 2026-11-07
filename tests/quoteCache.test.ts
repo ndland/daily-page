@@ -88,3 +88,39 @@ describe("loadDailyQuote", () => {
     expect(store.saved).toEqual([]);
   });
 });
+
+describe("loadDailyQuote, retries and storage", () => {
+  it("asks the source again on the next load after a failure, since the source limits the rate", async () => {
+    const failing = { fetchQuote: vi.fn(async () => Promise.reject(new Error("offline"))) };
+    const store = memoryStore(null);
+    await loadDailyQuote(store, failing, today);
+    await loadDailyQuote(store, failing, today);
+    expect(failing.fetchQuote).toHaveBeenCalledTimes(2);
+  });
+
+  it("shares one request between two loads that start together, through the throttled source", async () => {
+    const { throttled } = await import("../src/logic/throttle");
+    const inner = source("Shared line");
+    const limited = throttled(inner, 15 * 60 * 1000);
+    const store = memoryStore(null);
+
+    const [first, second] = await Promise.all([
+      loadDailyQuote(store, limited, today),
+      loadDailyQuote(store, limited, today),
+    ]);
+
+    expect(inner.fetchQuote).toHaveBeenCalledTimes(1);
+    expect(first?.text).toBe("Shared line");
+    expect(second).toBeNull();
+  });
+
+  it("returns the cached quote, and keeps it, when the fetched quote cannot be stored", async () => {
+    const store = memoryStore(yesterdayQuote);
+    store.set = async () => {
+      throw new Error("settings are read-only");
+    };
+    const shown = await loadDailyQuote(store, source("New line"), today);
+    expect(shown).toEqual(yesterdayQuote);
+    expect(store.get()).toEqual(yesterdayQuote);
+  });
+});

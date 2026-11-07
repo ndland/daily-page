@@ -49,4 +49,21 @@ export function monthGrid(year: number, month: number): (number | null)[][] {
   return rows;
 }
 
+/**
+ * ISO 8601 week number (Monday starts the week; week 1 holds the year's first Thursday).
+ * Works on the local calendar date, so daylight saving changes do not shift it.
+ */
+export function isoWeek(date: Date): number {
+  const DAY = 24 * 60 * 60 * 1000;
+  const day = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  // Move to the Thursday of this week, which always falls in the same ISO year.
+  const mondayFirst = (day.getUTCDay() + 6) % 7;
+  const thursday = new Date(day.getTime() + (3 - mondayFirst) * DAY);
+  // Week 1 is the week containing 4 January, i.e. the week of the year's first Thursday.
+  const jan4 = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 4));
+  const jan4Monday = (jan4.getUTCDay() + 6) % 7;
+  const week1Monday = jan4.getTime() - jan4Monday * DAY;
+  return Math.floor((thursday.getTime() - week1Monday) / (7 * DAY)) + 1;
+}
+
 export const WEEKDAY_HEADINGS = ["M", "T", "W", "T", "F", "S", "S"];
