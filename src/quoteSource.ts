@@ -9,6 +9,9 @@ const MIN_ATTEMPT_INTERVAL_MS = 15 * 60 * 1000;
 /** A request that has not answered by then is given up on. The cached quote stays on the page. */
 const REQUEST_TIMEOUT_MS = 5000;
 
+/** A real reply is a few hundred bytes. Anything far larger is not the quote, so it is refused. */
+const MAX_RESPONSE_LENGTH = 4096;
+
 /** Rejects after `ms`, so a stalled request cannot hold the footer's update forever. */
 export function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -29,6 +32,8 @@ export const zenQuotesSource: QuoteSource = throttled(
         requestUrl({ url: ZEN_QUOTES_TODAY_URL, method: "GET" }),
         REQUEST_TIMEOUT_MS,
       );
+      // The body is checked for size before it is parsed, so an oversized reply is never read in full.
+      if (response.text.length > MAX_RESPONSE_LENGTH) throw new Error("ZenQuotes: response was too large");
       return parseZenQuote(response.json);
     },
   },

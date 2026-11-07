@@ -7,7 +7,8 @@ const { zenQuotesSource, withTimeout } = await import("../src/quoteSource");
 
 beforeEach(() => {
   requestUrl.mockReset();
-  requestUrl.mockResolvedValue({ json: [{ q: "Keep going.", a: "Someone" }] });
+  const body = JSON.stringify([{ q: "Keep going.", a: "Someone" }]);
+  requestUrl.mockResolvedValue({ text: body, json: JSON.parse(body) });
 });
 
 describe("zenQuotesSource", () => {
