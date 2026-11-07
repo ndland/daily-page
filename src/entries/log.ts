@@ -1,4 +1,5 @@
 import { ActivityEntry, TimelineLine, formatEntry, toTimelineLine } from "./format";
+import { SPAN_RULE, isValidSpan } from "./edit";
 
 export type LogOutcome =
   | { ok: true; timeline: TimelineLine[] }
@@ -35,6 +36,18 @@ function appendEntry(timeline: TimelineLine[], line: TimelineLine): TimelineLine
   return [...timeline.slice(0, last + 1), line, ...timeline.slice(last + 1)];
 }
 
+/**
+ * Why a running activity cannot end at `now`, or null when it can. It must end after it started and
+ * last at most 12 hours, the same rule the editor applies, so a logged line is always one the
+ * editor accepts. A same-minute log has nothing to end, so it gets its own message.
+ */
+function endProblem(running: ActivityEntry, now: number): string | null {
+  if (now < running.start) return "That time is earlier than the running activity's start.";
+  if (now === running.start) return "The running activity started this minute. Log the next one a minute later.";
+  if (!isValidSpan(running.start, now)) return SPAN_RULE;
+  return null;
+}
+
 /** Returns a copy of the timeline with the running activity at `index` ended at `now`. */
 function endAt(timeline: TimelineLine[], index: number, now: number): TimelineLine[] {
   const running = timeline[index].entry as ActivityEntry;
@@ -53,10 +66,8 @@ export function logActivity(timeline: TimelineLine[], label: string, now: number
   let next = timeline;
   const index = runningIndex(timeline);
   if (index !== -1) {
-    const running = timeline[index].entry as ActivityEntry;
-    if (now < running.start) {
-      return fail("That time is earlier than the running activity's start.");
-    }
+    const problem = endProblem(timeline[index].entry as ActivityEntry, now);
+    if (problem) return fail(problem);
     next = endAt(timeline, index, now);
   }
 
@@ -78,9 +89,7 @@ export function endRunning(timeline: TimelineLine[], now: number): LogOutcome {
   const index = runningIndex(timeline);
   if (index === -1) return fail("Nothing is running.");
 
-  const running = timeline[index].entry as ActivityEntry;
-  if (now < running.start) {
-    return fail("That time is earlier than the running activity's start.");
-  }
+  const problem = endProblem(timeline[index].entry as ActivityEntry, now);
+  if (problem) return fail(problem);
   return succeed(endAt(timeline, index, now));
 }
