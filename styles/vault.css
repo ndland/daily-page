@@ -3,9 +3,10 @@
  * plugin.
  */
 
-/* The raw daily-page data is drawn by the view, not shown as text. Match on the language name
-   wherever it appears, because Obsidian's class names differ between reading view and the editor. */
-[class*="language-daily-page"] {
+/* The raw daily-page data is drawn by the plugin, not shown as text. Match on the language name wherever it
+   appears, because Obsidian's class names differ between reading view and the editor. The plugin's own
+   rendered block carries the same class name, so it is excluded: hiding it would hide the page. */
+[class*="language-daily-page"]:not(.block-language-daily-page) {
   display: none !important;
 }
 
@@ -28,12 +29,28 @@
   display: none !important;
 }
 
-/* Daily pages do not scroll. The page is sized to the note's visible area (see fit.ts), so anything that
-   would need a scrollbar is cut off instead. Clip, not hidden, so nothing can scroll the note programmatically
-   either, such as moving the caret into view. Only daily notes are affected. */
-.daily-note .cm-scroller,
-.daily-note .markdown-preview-view,
-.daily-note .markdown-source-view,
-.daily-note .view-content {
-  overflow: clip !important;
+/* Obsidian's backlinks footer (Linked and Unlinked mentions) sits below the note's content and is counted
+   as space the page must leave, so on a busy day the page shrinks by its whole height. A daily page has
+   no use for it, so it is hidden here. */
+.daily-note .embedded-backlinks {
+  display: none !important;
+}
+
+/* Daily pages do not scroll on a desktop. The page is sized to the note's visible area (see fit.ts), so
+   anything that would need a scrollbar is cut off instead. Clip, not hidden, so nothing can scroll the note
+   programmatically either, such as moving the caret into view. The phone layout is one column that scrolls
+   (fit.ts uses the same width, max-width 500px), so these rules apply only above that width. */
+@media (min-width: 501px) {
+  .daily-note .cm-scroller,
+  .daily-note .markdown-preview-view,
+  .daily-note .markdown-source-view,
+  .daily-note .view-content {
+    overflow: clip !important;
+  }
+
+  /* The editor keeps padding below the note so it can scroll past the end. A desktop daily page never scrolls,
+     so that padding only pushes the page up from the bottom of the window. */
+  .daily-note .cm-scroller {
+    padding-bottom: 0 !important;
+  }
 }

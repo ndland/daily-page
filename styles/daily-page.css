@@ -194,9 +194,12 @@
   text-align: center;
 }
 
-/* The moon is a little larger than the month and weekday, so it reads as the cell's picture. */
+/* The moon is a little larger than the month and weekday, so it reads as the cell's picture. Its font is
+   the emoji face: a note's text font (for example Iosevka) has no moon glyphs, and the fallback is a plain
+   symbol that takes the accent colour instead of the coloured emoji. */
 .daily-page__moon {
   color: var(--dp-accent);
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", emoji, sans-serif;
   font-size: calc(var(--dp-label-size) * 1.3);
   line-height: 1;
 }
@@ -389,7 +392,8 @@
   border-left: 3px solid var(--dp-block-accent, var(--dp-accent));
 }
 
-/* Short blocks: a strip at part width, with the label beside it, always readable in full. */
+/* Short blocks: a strip at part width, with the label starting just inside its left edge, so the text sits
+   close to the timeline like text on a page, and is always readable in full. */
 .daily-page__block.is-short {
   right: 70%;
   overflow: visible;
@@ -397,7 +401,7 @@
 
 .daily-page__block.is-short .daily-page__block-label {
   position: absolute;
-  left: calc(100% + 0.5rem);
+  left: 0.6rem;
   top: 50%;
   transform: translateY(-50%);
   flex: none;
@@ -844,4 +848,42 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
+}
+
+/*
+ * A daily page's note. These rules belong to the plugin, so they apply to any note that shows a page, with or
+ * without the daily-note cssclass. The cssclass still works for notes that carry it.
+ */
+
+/* The raw block text is drawn by the plugin. Hide the source, but not the rendered block, which has the same
+   language name in its class. */
+[class*="language-daily-page"]:not(.block-language-daily-page) {
+  display: none !important;
+}
+
+/* The file name and the properties box are not needed above a page. */
+:is(.daily-note, .workspace-leaf:has(.daily-page)) .inline-title,
+:is(.daily-note, .workspace-leaf:has(.daily-page)) .metadata-container {
+  display: none !important;
+}
+
+/* Obsidian's backlinks footer sits below the note and is counted as space the page must leave, so the page
+   would shrink by its whole height. A page has no use for it. */
+:is(.daily-note, .workspace-leaf:has(.daily-page)) .embedded-backlinks {
+  display: none !important;
+}
+
+/* On a desktop the page is sized to the note's visible area, so nothing scrolls. Anything that would need a
+   scrollbar is clipped instead. The phone layout is one column that scrolls, so these rules apply only above
+   the phone width (see PHONE_QUERY in src/render/fit.ts). */
+@media (min-width: 501px) {
+  :is(.daily-note, .workspace-leaf:has(.daily-page)) :is(.cm-scroller, .markdown-preview-view, .markdown-source-view, .view-content) {
+    overflow: clip !important;
+  }
+
+  /* The editor pads the bottom of a note so it can scroll past the end. A desktop page never scrolls, so that
+     padding only pushes the page up from the bottom of the window. */
+  :is(.daily-note, .workspace-leaf:has(.daily-page)) .cm-scroller {
+    padding-bottom: 0 !important;
+  }
 }
