@@ -16,7 +16,7 @@ A daily page in Obsidian that mirrors the Hobonichi A6 Techo daily layout, in th
   - A finished day reads back correctly.
   - The footer quote and mini calendar render with no network.
 - **Scope:** daily page only. Weekly and monthly views, aggregation, data-driven prompts, and Things integration beyond the checklist are out of scope and belong to later phases.
-- **Platform:** Windows first. iPhone support comes after the desktop version works.
+- **Platform:** Windows desktop and iPhone (Obsidian mobile). On a narrow screen the page is one column that scrolls, and no text is cut short. See the 500px media query in styles/daily-page.css.
 
 ## 2. Commands
 
@@ -36,7 +36,7 @@ Plugin commands (available in Obsidian's command palette, with hotkeys you choos
 | Log activity | Prompts for a label, stamps the current time, ends the running activity at that time, and starts the new one. |
 | Log side note | Prompts for text, stamps the current time, and adds the note. It does not change any activity's end time. |
 | End running activity | Stamps the current time as the running activity's end. Adds no new line. |
-| Undo last log | Reverts the last log action in this session, including restoring the previous running activity's end time. |
+| Undo last log | Reverts the last edit to the page in this session (a log, a tick, or an edit), including the previous running activity's end time. It changes only the page's lines, so text outside the page is kept. If the page has changed since that edit, it refuses rather than revert the newer change. |
 
 ## 3. Project structure
 
@@ -142,7 +142,7 @@ The daily note holds two sections:
 - Closed activity: `- HH:MM-HH:MM Label`.
 - Running activity: `- HH:MM- Label`. At most one running activity per day.
 - Side note: `- HH:MM note: text`.
-- Checklist: plain markdown tasks, typed by hand.
+- Checklist: plain markdown tasks. They can be typed by hand, added with the Add todo hotkey, or ticked by clicking the box.
 
 **Acceptance**
 - Parsing and then serializing a note returns it byte for byte.
@@ -155,7 +155,8 @@ The daily note holds two sections:
 - Log activity ends the running activity at the new stamp and adds the new one as running.
 - Log side note adds a note line and changes no activity's end time.
 - End running activity sets the end time and adds no line.
-- Undo last log reverts the last action in this session, including the previous end time.
+- Undo last log reverts the last edit to the page in this session, including the previous end time. Text outside the page is kept.
+- Undo is refused, and the note is left as it is, when the page changed after that edit.
 - A log time earlier than the running activity's start is rejected with a message.
 - If today's note does not exist, the first log creates it with both sections.
 
@@ -216,15 +217,24 @@ Note: `#6272A4` on `#282A36` has low contrast. Use it for lines and decoration o
 - With no network, show the most recent cached quote.
 - With no cache and no network, hide the footer quote without showing an error.
 - The provider is chosen after checking reliability, display licence, rate limits, and attribution requirements.
+- The plugin is the only code that fetches a quote. The Dataview view makes no network call. It shows the quote the plugin has cached, so a note never shows a different quote from the plugin, and a note never has a quote written into it.
+
+**Provider decision: ZenQuotes** (`https://zenquotes.io/api/today`)
+- Attribution: required on the free tier. The official ZenQuotes documentation (docs.zenquotes.io) asks free users to link back to zenquotes.io. The footer shows "Inspirational quotes provided by ZenQuotes API" with that link, always alongside a quote.
+- Rate limit: the code makes at most one attempt every 15 minutes, which is far below any limit. The figure of 5 requests per 30 seconds is from third-party listings, not the official documentation, so confirm it before release.
+- Display licence: the official documentation's attribution requirement is the only licence condition confirmed. Confirm the full current terms before release.
+- Reliability: a failed or throttled attempt falls back to the most recent cached quote. With no cache, no quote is shown and no error appears.
+- Status: selected in principle, pending the two confirmations above before release.
 
 **Acceptance**
 - Two renders on the same day trigger one fetch (checked with a mocked fetch in a unit test).
 - With the network off, the cached quote shows and no error appears.
 - With no cache and no network, the footer is hidden and no error is shown.
+- The first render of a note does not wait on the network: it draws at once with the cached quote.
 
 ## 8. Open questions (not blocking)
 
-1. **Quote provider:** to be chosen after the vetting step in F.
+1. **Quote provider:** ZenQuotes, selected in section F. Two points need confirming before release: the rate limit and the full display licence.
 2. **Running activity past midnight:** the default is that it stays running in its own day's note and is not closed by the next day's entries. Confirm, or pick another rule.
 3. **Week start:** Monday, assumed from the reference photo. Confirm.
 4. **Hotkey defaults:** choose when building module B.
