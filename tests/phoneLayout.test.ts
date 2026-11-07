@@ -52,7 +52,8 @@ describe("keepFitted by screen width", () => {
     screenIsPhone(false);
     const page = renderInPage();
     keepFitted(page);
-    expect(page.style.height).toMatch(/px$/);
+    // The window is 768px tall in jsdom, less the 16px reserve, so the page fills 752px.
+    expect(page.style.height).toBe("752px");
   });
 
   it("leaves the page to its natural height on a phone, rather than fitting it", () => {

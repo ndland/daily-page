@@ -49,6 +49,10 @@ export function spreadShortLabels(timelineEl: HTMLElement): void {
     centres[i] = Math.min(centres[i], limit);
     limit = centres[i] - LABEL_GAP_PX;
   }
+  // When the labels cannot all fit, they overlap, but none is placed off either end of the axis.
+  for (let i = 0; i < centres.length; i++) {
+    centres[i] = Math.min(Math.max(centres[i], 0), height);
+  }
 
   items.forEach((item, i) => {
     // The label is positioned inside its block, so its offset is relative to the block's top.

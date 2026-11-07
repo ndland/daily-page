@@ -10,6 +10,8 @@ export function makeClickable(el: HTMLElement, onActivate: () => void, role = "b
   el.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
+    // A held key repeats, and each repeat must not activate the element again.
+    if (event.repeat) return;
     onActivate();
   });
 }

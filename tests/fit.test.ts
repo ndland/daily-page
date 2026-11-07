@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { doneItemsShown, fitPage } from "../src/render/fit";
+import { doneLayout, fitPage } from "../src/render/fit";
 
 /** A stand-in window with a given height, so the maths can be checked without a screen. */
 const windowOf = (innerHeight: number) => ({ innerHeight }) as Window;
@@ -96,18 +96,39 @@ describe("fitPage outside a reading view", () => {
   });
 });
 
-describe("doneItemsShown", () => {
-  it("shows every finished todo when they all fit", () => {
-    expect(doneItemsShown(3, 1000, 10)).toBe(3);
+describe("doneLayout", () => {
+  it("shows every finished todo, with no more row, when they all fit", () => {
+    expect(doneLayout(3, 1000, 10)).toEqual({ shown: 3, more: false });
+    expect(doneLayout(3, 40, 10)).toEqual({ shown: 3, more: false });
   });
 
   it("shows two fewer rows than the budget holds, one for the label and one for the more row", () => {
-    // A 40px budget at 10px a row holds four rows: the label, two todos, and the "+N more" row.
-    expect(doneItemsShown(3, 40, 10)).toBe(3);
-    expect(doneItemsShown(4, 40, 10)).toBe(2);
+    // A 40px budget at 10px a row holds four rows: the label, two todos, and the more row.
+    expect(doneLayout(4, 40, 10)).toEqual({ shown: 2, more: true });
   });
 
-  it("shows none when the budget holds only the label and the more row", () => {
-    expect(doneItemsShown(5, 20, 10)).toBe(0);
+  it("shows no todos, but still the more row, when the budget holds only the label and that row", () => {
+    expect(doneLayout(5, 20, 10)).toEqual({ shown: 0, more: true });
+  });
+
+  it("shows no more row when the budget holds only the label, since the label alone fills it", () => {
+    expect(doneLayout(5, 10, 10)).toEqual({ shown: 0, more: false });
+    expect(doneLayout(5, 0, 10)).toEqual({ shown: 0, more: false });
+  });
+});
+
+describe("fitPage and the reader's scroll", () => {
+  it("fits the page to its place in the note, so scrolling the note does not change the fit", () => {
+    const scrolled = pageAt(0);
+    const scrolledScroller = noteWith(scrolled, { visible: 900, pageTop: 60, paddingBottom: 0 });
+    scrolledScroller.scrollTop = 50;
+    fitPage(scrolled);
+
+    // The same page, at the place it reaches once the 50px of scrolling is counted: 60 + 50 = 110.
+    const unscrolled = pageAt(0);
+    noteWith(unscrolled, { visible: 900, pageTop: 110, paddingBottom: 0 });
+    fitPage(unscrolled);
+
+    expect(scrolled.style.height).toBe(unscrolled.style.height);
   });
 });

@@ -29,6 +29,9 @@ function spaceBelowPage(page: HTMLElement, scroller: HTMLElement): number {
 /**
  * Sizes the page to the note's visible area below the page's top, less the space the note
  * holds below the page and the reserve at the bottom.
+ *
+ * The page's place is its position in the note's content, so the scroll offset is added to it. The fit
+ * therefore depends on where the page sits in the note, not on how far the reader has scrolled.
  */
 function fitToNote(page: HTMLElement, scroller: HTMLElement): void {
   const pageTop = page.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
@@ -76,7 +79,7 @@ function setGridUnit(page: HTMLElement): number | null {
  * Draws the dotted grid behind the notes column: one dotted line per grid unit, in both
  * directions, at exact pixel positions so every line meets the text on the grid.
  */
-function drawGrid(notes: HTMLElement, unit: number): void {
+export function drawGrid(notes: HTMLElement, unit: number): void {
   let grid = notes.querySelector<HTMLElement>(".daily-page__grid");
   if (!grid) {
     grid = document.createElement("div");
@@ -119,31 +122,37 @@ function fitDoneList(notes: HTMLElement, unit: number): void {
   if (!done) return;
   const items = [...done.querySelectorAll<HTMLElement>(".daily-page__done-item")];
   const more = done.querySelector<HTMLElement>(".daily-page__done-more");
-  for (const item of items) item.hidden = false;
-  if (more) more.hidden = true;
 
   const great = notes.querySelector<HTMLElement>(".daily-page__great");
   // Two gaps (above and below the notes area) and the minimum notes space come off the column.
   const budget = notes.clientHeight - (great?.offsetHeight ?? 0) - 2 * unit - MIN_NOTES_ROWS * unit;
-  const shown = doneItemsShown(items.length, budget, unit);
-  if (shown === items.length) return;
-
-  for (const item of items.slice(shown)) item.hidden = true;
+  const layout = doneLayout(items.length, budget, unit);
+  items.forEach((item, i) => {
+    item.hidden = i >= layout.shown;
+  });
   if (more) {
-    more.textContent = `+${items.length - shown} more`;
-    more.hidden = false;
+    more.hidden = !layout.more;
+    more.textContent = `+${items.length - layout.shown} more`;
   }
 }
 
+/** How the finished todos fit: how many show, and whether a "+N more" row is needed. */
+export interface DoneLayout {
+  shown: number;
+  more: boolean;
+}
+
 /**
- * How many finished todos fit in `budgetPx` of the notes column, one row each of `unit` pixels. All
- * of them when they fit. Otherwise one row goes to the label and one to "+N more", and the rest of
- * the rows show todos.
+ * Lays out the finished todos in `budgetPx` of the notes column, one row of `unit` pixels each.
+ * All of them show when they fit. Otherwise a row goes to the label and a row to "+N more", and the
+ * rest show. When the budget holds only the label, no todo and no "+N more" row show, since the
+ * label alone fills it.
  */
-export function doneItemsShown(total: number, budgetPx: number, unit: number): number {
-  const rowsAvailable = Math.floor(budgetPx / unit); // includes the label row
-  if (total <= rowsAvailable - 1) return total;
-  return Math.max(0, rowsAvailable - 2);
+export function doneLayout(total: number, budgetPx: number, unit: number): DoneLayout {
+  const rows = Math.floor(budgetPx / unit); // includes the label row
+  if (total <= rows - 1) return { shown: total, more: false };
+  if (rows < 2) return { shown: 0, more: false };
+  return { shown: Math.max(0, rows - 2), more: true };
 }
 
 /**
