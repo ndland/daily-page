@@ -32,7 +32,8 @@ export const zenQuotesSource: QuoteSource = throttled(
         requestUrl({ url: ZEN_QUOTES_TODAY_URL, method: "GET" }),
         REQUEST_TIMEOUT_MS,
       );
-      // The body is checked for size before it is parsed, so an oversized reply is never read in full.
+      // The reply is checked for size before it is parsed. The request itself still downloads the whole
+      // body first, so this bounds what is parsed, not what is received.
       if (response.text.length > MAX_RESPONSE_LENGTH) throw new Error("ZenQuotes: response was too large");
       return parseZenQuote(response.json);
     },
