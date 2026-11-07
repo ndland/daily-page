@@ -42,10 +42,11 @@ function appendEntry(timeline: TimelineLine[], line: TimelineLine): TimelineLine
  * editor accepts. A same-minute log has nothing to end, so it gets its own message.
  */
 function endProblem(running: ActivityEntry, now: number): string | null {
-  if (now < running.start) return "That time is earlier than the running activity's start.";
   if (now === running.start) return "The running activity started this minute. Log the next one a minute later.";
-  if (!isValidSpan(running.start, now)) return SPAN_RULE;
-  return null;
+  // A span that crosses midnight is valid, so an activity from 23:30 can end at 00:10.
+  if (isValidSpan(running.start, now)) return null;
+  if (now < running.start) return "That time is earlier than the running activity's start.";
+  return SPAN_RULE;
 }
 
 /** Returns a copy of the timeline with the running activity at `index` ended at `now`. */
