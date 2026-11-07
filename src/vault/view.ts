@@ -11,7 +11,7 @@
 import { renderPage } from "../render/page";
 import { keepFitted } from "../render/fit";
 import { setChecklistItem, type ScopeEdit } from "../entries/edit";
-import { NO_PAGE_MESSAGE, countDailyPageBlocks, scopeOf } from "../logic/scope";
+import { MULTIPLE_BLOCKS, NO_PAGE_MESSAGE, countDailyPageBlocks, scopeOf } from "../logic/scope";
 import { parseTagColours } from "../logic/tags";
 import type { QuoteText } from "../render/quote";
 import { PageEditor, reasonOf } from "./editFlow";
@@ -24,7 +24,6 @@ declare const app: any;
 
 const PLUGIN_ID = "daily-page";
 
-const MULTIPLE_BLOCKS = "This note has more than one daily page. Keep one daily-page block, then reload.";
 
 /**
  * The plugin's editor when the plugin is enabled, so an undo in the plugin sees the edits made in the

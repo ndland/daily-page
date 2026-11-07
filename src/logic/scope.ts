@@ -4,6 +4,9 @@ const FENCE_CLOSE = /^```\s*$/;
 /** Shown in place of the page when a note has no complete daily-page block to show or edit. */
 export const NO_PAGE_MESSAGE = "This note has no complete daily page, so there is nothing to show or edit. Check its daily-page block.";
 
+/** Shown when a note has two daily-page blocks, so a write or a view would not know which one is the page. */
+export const MULTIPLE_BLOCKS = "This note has more than one daily page. Keep one daily-page block, then reload.";
+
 /**
  * Finds the first `daily-page` block. Returns the line range of its content, [start, end),
  * or null when the note has no such block, or when the block is opened but never closed.

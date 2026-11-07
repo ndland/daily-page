@@ -4,6 +4,7 @@ import {
   Modal,
   Notice,
   Plugin,
+  Platform,
   PluginSettingTab,
   Setting,
   TFile,
@@ -16,12 +17,13 @@ import { LogOutcome, endRunning, logActivity, logNote } from "./entries/log";
 import { ScopeEdit, appendChecklistItem, appendGreatThing, setChecklistItem } from "./entries/edit";
 import { DEFAULT_DAILY_PATTERN, dailyNotePath, isSafeDailyPattern } from "./logic/paths";
 import { parseTagColours } from "./logic/tags";
-import { NO_PAGE_MESSAGE, countDailyPageBlocks, scopeOf } from "./logic/scope";
+import { MULTIPLE_BLOCKS, NO_PAGE_MESSAGE, countDailyPageBlocks, scopeOf } from "./logic/scope";
 import { StoredQuote, loadDailyQuote } from "./logic/quoteCache";
 import { renderPage } from "./render/page";
 import type { QuoteText } from "./render/quote";
 import { keepFitted } from "./render/fit";
-import { PageEditor, reasonOf } from "./vault/editFlow";
+import { resolveReadOnly } from "./logic/readOnly";
+import { PageEditor, READ_ONLY_MESSAGE, reasonOf } from "./vault/editFlow";
 import { NoteCreator } from "./vault/noteCreator";
 import { openBlockEditor, openGreatThingEditor } from "./vault/editor";
 
@@ -47,8 +49,6 @@ const DEFAULT_SETTINGS: DailyPageSettings = {
  */
 const NEW_NOTE_CONTENT = "```daily-page\n## Timeline\n\n## Checklist\n\n## Three things\n```\n";
 
-const MULTIPLE_BLOCKS = "This note has more than one daily page. Keep one daily-page block, then reload.";
-
 type LogAction = (timeline: TimelineLine[], now: number) => LogOutcome;
 
 function splitLines(content: string): string[] {
@@ -64,7 +64,7 @@ export default class DailyPagePlugin extends Plugin {
   async onload(): Promise<void> {
     await this.loadSettings();
     this.notes = new NoteCreator<TFile>(this.app.vault, (entry): entry is TFile => entry instanceof TFile);
-    this.pages = new PageEditor(this.app.vault, () => new Date());
+    this.pages = new PageEditor(this.app.vault, () => new Date(), () => this.isReadOnly());
 
     this.addCommand({
       id: "log-activity",
@@ -131,6 +131,35 @@ export default class DailyPagePlugin extends Plugin {
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
+  }
+
+  /**
+   * Read-only is a per-device choice, kept in this device's own browser storage and not in the
+   * synced settings file, so switching one device never switches another. Unset, phones are
+   * read-only and desktops are not.
+   */
+  private readOnlyKey(): string {
+    return `daily-page:read-only:${this.app.vault.getName()}`;
+  }
+
+  private storedReadOnly(): string | null {
+    try {
+      return window.localStorage.getItem(this.readOnlyKey());
+    } catch {
+      return null;
+    }
+  }
+
+  isReadOnly(): boolean {
+    return resolveReadOnly(this.storedReadOnly(), Platform.isMobile);
+  }
+
+  setReadOnly(value: boolean): void {
+    try {
+      window.localStorage.setItem(this.readOnlyKey(), value ? "on" : "off");
+    } catch {
+      // Storage can be blocked. The device then keeps its default.
+    }
   }
 
   /** Logs a new entry to today's note, creating the note if needed. */
@@ -201,6 +230,11 @@ export default class DailyPagePlugin extends Plugin {
 
   /** Runs a command, and shows a Notice rather than an unhandled error if it fails. */
   private async guard(action: () => Promise<void>): Promise<void> {
+    // Checked before the note is created, since creating today's note is a write too.
+    if (this.isReadOnly()) {
+      new Notice(READ_ONLY_MESSAGE);
+      return;
+    }
     try {
       await action();
     } catch (error) {
@@ -275,7 +309,9 @@ export default class DailyPagePlugin extends Plugin {
         get: () => this.settings.quote,
         set: async (stored) => {
           this.settings.quote = stored;
-          await this.saveSettings();
+          // A read-only device keeps the quote in memory and writes no file, so the synced
+          // settings file is not changed from here.
+          if (!this.isReadOnly()) await this.saveSettings();
         },
       },
       QUOTE_SOURCE,
@@ -337,6 +373,16 @@ class DailyPageSettingTab extends PluginSettingTab {
           this.plugin.settings.dailyPattern = pattern;
           await this.plugin.saveSettings();
         }),
+      );
+
+    new Setting(containerEl)
+      .setName("Read-only on this device")
+      .setDesc(
+        "Stops this device writing notes, so it cannot conflict with another device over sync. " +
+          "On by default on phones and tablets. This choice is kept on this device only.",
+      )
+      .addToggle((toggle) =>
+        toggle.setValue(this.plugin.isReadOnly()).onChange((value) => this.plugin.setReadOnly(value)),
       );
 
     const colour = new Setting(containerEl)

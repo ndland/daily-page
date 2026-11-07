@@ -1,10 +1,8 @@
 import type { TFile, Vault } from "obsidian";
 import type { ScopeEdit } from "../entries/edit";
+import { CONFLICT_MESSAGE, hasConflictMarkers } from "../logic/conflict";
 import { minutesOfDay } from "../logic/time";
-import { NO_PAGE_MESSAGE, countDailyPageBlocks, replaceScope, scopeOf } from "../logic/scope";
-
-/** Shown when a note has two daily-page blocks, so a write would not know which one the page is. */
-const MULTIPLE_BLOCKS = "This note has more than one daily page. Keep one daily-page block, then reload.";
+import { MULTIPLE_BLOCKS, NO_PAGE_MESSAGE, countDailyPageBlocks, replaceScope, scopeOf } from "../logic/scope";
 
 /** The page's lines before and after one edit. Undo uses these, and nothing outside the page. */
 export interface EditRecord {
@@ -71,6 +69,7 @@ function dominantLineEnding(content: string): string {
  */
 export function applyToText(content: string, edit: ScopeEdit, minute: number): TextResult {
   const { lines, endings } = splitKeepingEndings(content);
+  if (hasConflictMarkers(lines)) return { ok: false, message: CONFLICT_MESSAGE };
   if (countDailyPageBlocks(lines) > 1) return { ok: false, message: MULTIPLE_BLOCKS };
   const scope = scopeOf(lines);
   if (!scope) return { ok: false, message: NO_PAGE_MESSAGE };

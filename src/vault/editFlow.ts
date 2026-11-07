@@ -3,6 +3,10 @@ import type { ScopeEdit } from "../entries/edit";
 import { EditRecord, UndoSlot, applyNoteEdit, undoEdit } from "./noteEdit";
 import { WriteQueue } from "./writeQueue";
 
+/** Shown when a write is attempted on a device set to read-only. */
+export const READ_ONLY_MESSAGE =
+  "This device is read-only, so it does not write notes. Turn off read-only in the Daily Page settings to edit here.";
+
 /** A readable reason for a failed write, for the message the reader sees. */
 export function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -65,16 +69,23 @@ export class PageEditor {
   private readonly slot = new UndoSlot();
   private readonly queue = new WriteQueue();
 
+  /**
+   * `readOnly` is asked at the moment of each write, so a device can be switched to read-only
+   * without a reload. A read-only editor writes nothing and says why.
+   */
   constructor(
     private readonly vault: Vault,
     private readonly now: () => Date,
+    private readonly readOnly: () => boolean = () => false,
   ) {}
 
   edit(file: TFile, edit: ScopeEdit): Promise<string | null> {
+    if (this.readOnly()) return Promise.resolve(READ_ONLY_MESSAGE);
     return this.queue.run(() => editPage(this.vault, file, edit, this.now(), this.slot));
   }
 
   undo(resolveFile: (path: string) => TFile | null): Promise<string> {
+    if (this.readOnly()) return Promise.resolve(READ_ONLY_MESSAGE);
     return this.queue.run(() => undoPage(this.vault, this.slot, resolveFile, this.now()));
   }
 }
