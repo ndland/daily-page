@@ -5,12 +5,13 @@
     "test": "tests"
   },
   "scripts": {
-    "build": "tsc --noEmit && node esbuild.config.mjs production",
+    "build": "vitest run && tsc --noEmit && node esbuild.config.mjs production",
     "dev": "node esbuild.config.mjs",
     "test": "vitest run",
     "harness": "esbuild harness/harness.ts --bundle --format=iife --target=es2020 --outfile=harness/dist/harness.js",
     "vault": "node scripts/build-vault.mjs",
-    "release": "npm run build && node scripts/package-plugin.mjs"
+    "release": "npm run build && node scripts/package-plugin.mjs",
+    "audit": "npm audit --audit-level=high"
   },
   "keywords": [],
   "author": "Nick Land",

@@ -11,11 +11,11 @@ npm install
 npm run release
 ```
 
-This writes `release/daily-page/` with three files: `main.js`, `manifest.json` and `styles.css`. Copy them into `<your vault>/.obsidian/plugins/daily-page/`, then turn the plugin on under Settings, Community plugins. On iPhone, put the same folder in the vault through your sync method, and reload Obsidian.
+The build runs the test suite first, so a failing test stops the release. The package is written to `release/daily-page/`: `main.js`, `manifest.json`, `styles.css` and `versions.json`. The release script refuses any file that mentions the harness. Copy them into `<your vault>/.obsidian/plugins/daily-page/`, then turn the plugin on under Settings, Community plugins. On iPhone, put the same folder in the vault through your sync method, and reload Obsidian.
 
 ## Update
 
-Run `npm run release` again, copy the three files over the old ones, and reload Obsidian.
+Run `npm run release` again, copy the four files over the old ones, and reload Obsidian.
 
 ## Commands and keys
 
@@ -40,10 +40,11 @@ The footer quote comes from ZenQuotes (zenquotes.io), fetched at most once a day
 npm test           # the test suite
 npm run build      # type check and production build into dist/
 npm run harness    # build the browser harness
+npm run audit     # dependency vulnerabilities, at high severity and above
 node harness/serve.mjs   # then open http://localhost:5173/harness/index.html
 ```
 
-The harness shows the page in a browser, at a phone or desktop width. It is a development tool only. It is not part of the plugin: `npm run release` copies just the three files listed above, so the harness, the vault view in `dist/vault/`, the source and the tests never reach the plugin package.
+The harness shows the page in a browser, at a phone or desktop width. It is a development tool only. It is not part of the plugin: `npm run release` copies just the plugin files listed above, so the harness, the vault view in `dist/vault/`, the source and the tests never reach the plugin package.
 
 ## Licence
 
