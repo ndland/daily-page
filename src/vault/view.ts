@@ -73,12 +73,15 @@ function dailyPattern(): string {
   return app.plugins?.plugins?.[PLUGIN_ID]?.settings?.dailyPattern ?? DEFAULT_DAILY_PATTERN;
 }
 
-/** Reads the note and draws the page from its daily-page block. */
-async function draw(): Promise<void> {
+/**
+ * Draws the page from its daily-page block. The text is the editor's live text when a change came from
+ * typing, and the saved note otherwise, so the page does not wait for the note to be saved.
+ */
+async function draw(liveText?: string): Promise<void> {
   const path: string = dv.current().file.path;
   let source: string;
   try {
-    source = await dv.io.load(path);
+    source = liveText ?? (await dv.io.load(path));
   } catch (error) {
     dv.container.replaceChildren();
     // A notice that stays, since an empty view with no explanation would look like a broken note.
@@ -125,4 +128,34 @@ async function draw(): Promise<void> {
   if (page) keepFitted(page);
 }
 
-void draw();
+/**
+ * Redraws the page as the note is typed in, from the editor's text. Obsidian saves a note only after a
+ * pause, and Dataview re-runs this view only after the save, so without this the page lags behind the
+ * typing. Each run of the view replaces the listener for its note, and a listener whose view has gone
+ * stops itself.
+ */
+function followEditor(path: string): void {
+  const key = `daily-page-view:${path}`;
+  const workspace = app.workspace;
+  const previous = (window as any)[key];
+  if (previous) workspace.off("editor-change", previous);
+
+  let frame: number | null = null;
+  const onChange = (editor: any, info: any): void => {
+    if (!dv.container.isConnected) {
+      workspace.off("editor-change", onChange);
+      delete (window as any)[key];
+      return;
+    }
+    if (info?.file?.path !== path || frame !== null) return;
+    // One redraw per frame, from the text as it is when the frame runs, so typing is never drawn stale.
+    frame = requestAnimationFrame(() => {
+      frame = null;
+      void draw(editor.getValue());
+    });
+  };
+  (window as any)[key] = onChange;
+  workspace.on("editor-change", onChange);
+}
+
+void draw().then(() => followEditor(dv.current().file.path));

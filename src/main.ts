@@ -6,6 +6,9 @@ import {
   Plugin,
   Platform,
   PluginSettingTab,
+  Editor,
+  MarkdownFileInfo,
+  MarkdownView,
   Setting,
   TFile,
   normalizePath,
@@ -37,16 +40,29 @@ function splitLines(content: string): string[] {
   return content.split(/\r?\n/);
 }
 
+/** Shows a message in place of a block, for example when its note cannot be read. */
+function showBlockMessage(el: HTMLElement, text: string): void {
+  const message = document.createElement("div");
+  message.className = "daily-page__message";
+  message.textContent = text;
+  el.replaceChildren(message);
+}
+
 export default class DailyPagePlugin extends Plugin {
   settings: DailyPageSettings = { ...DEFAULT_SETTINGS };
   private notes!: NoteCreator<TFile>;
   /** Shared with the vault view, so both use one undo record and one write queue. */
   pages!: PageEditor;
+  /** The blocks drawn in open notes, so each can be redrawn as its note is typed in. */
+  private readonly liveBlocks = new Map<HTMLElement, { path: string; paint: (text: string) => void }>();
+  private livePending: { editor: Editor; path: string } | null = null;
+  private liveFrame: number | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
     this.notes = new NoteCreator<TFile>(this.app.vault, (entry): entry is TFile => entry instanceof TFile);
     this.pages = new PageEditor(this.app.vault, () => new Date(), () => this.isReadOnly());
+    this.registerEvent(this.app.workspace.on("editor-change", (editor, info) => this.followEditor(editor, info)));
 
     this.addCommand({
       id: "log-activity",
@@ -277,7 +293,7 @@ export default class DailyPagePlugin extends Plugin {
 
   /**
    * Draws the page from the note's page scope, the same lines the edits change, and wires clicks
-   * back to the note.
+   * back to the note. The block is kept in step with its note while the note is typed in.
    */
   private async renderBlock(el: HTMLElement, sourcePath: string): Promise<void> {
     const now = new Date();
@@ -291,50 +307,19 @@ export default class DailyPagePlugin extends Plugin {
     );
     let content: string;
     try {
-      content = file instanceof TFile ? await this.app.vault.read(file) : "";
+      // The open editor's text when the note is open, so a redraw never shows an older save.
+      content = this.openEditorText(sourcePath) ?? (file instanceof TFile ? await this.app.vault.read(file) : "");
     } catch (error) {
-      const message = document.createElement("div");
-      message.className = "daily-page__message";
-      message.textContent = `The note could not be read: ${reasonOf(error)}`;
-      el.replaceChildren(message);
-      return;
-    }
-    const lines = splitLines(content);
-    if (countDailyPageBlocks(lines) > 1) {
-      const message = document.createElement("div");
-      message.className = "daily-page__message";
-      message.textContent = MULTIPLE_BLOCKS;
-      el.replaceChildren(message);
-      return;
-    }
-    const scope = scopeOf(lines);
-    if (!scope) {
-      const message = document.createElement("div");
-      message.className = "daily-page__message";
-      message.textContent = NO_PAGE_MESSAGE;
-      el.replaceChildren(message);
+      showBlockMessage(el, `The note could not be read: ${reasonOf(error)}`);
       return;
     }
 
-    const blockLines = lines.slice(scope.start, scope.end);
-    const draw = (quote: QuoteText | null): void => {
-      renderPage(el, blockLines, now, quote, {
-        date: noteDay,
-        accent: this.settings.accentColor,
-        tagColours: parseTagColours(this.settings.tagColours),
-        handlers: {
-          onToggle: (item, checked) => {
-            void this.editFile(sourcePath, (scope) => setChecklistItem(scope, item, checked));
-          },
-          onEdit: (block) => openBlockEditor(block, (edit) => void this.editFile(sourcePath, edit)),
-          onEditGreatThing: (item) =>
-            openGreatThingEditor(item, (edit) => void this.editFile(sourcePath, edit)),
-        },
-      });
-      // Size the page to the window once it is on screen, and again on every resize.
-      const page = el.querySelector<HTMLElement>(".daily-page");
-      if (page) keepFitted(page);
-    };
+    // The quote last drawn for this block, so a redraw while typing keeps it.
+    let quote: QuoteText | null = null;
+    this.liveBlocks.set(el, {
+      path: sourcePath,
+      paint: (text) => this.paintBlock(el, sourcePath, text, noteDay, quote),
+    });
 
     // The page is drawn at once with the quote kept for its own day. Only today's note, named by its path, fetches.
     await drawNoteQuote({
@@ -343,8 +328,84 @@ export default class DailyPagePlugin extends Plugin {
       noteDay,
       namedByPath: dateFromNotePath(sourcePath, this.settings.dailyPattern) !== null,
       now,
-      draw,
+      draw: (next) => {
+        quote = next;
+        this.paintBlock(el, sourcePath, content, noteDay, quote);
+      },
       stillShown: () => el.isConnected,
+    });
+  }
+
+  /** The text of a note open in an editor, or null when no editor has it open. */
+  private openEditorText(path: string): string | null {
+    for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
+      const view = leaf.view;
+      if (view instanceof MarkdownView && view.file?.path === path) return view.editor.getValue();
+    }
+    return null;
+  }
+
+  /** Draws one block from a note's text. Used when the block first draws, and again as the note is typed in. */
+  private paintBlock(
+    el: HTMLElement,
+    sourcePath: string,
+    text: string,
+    noteDay: Date,
+    quote: QuoteText | null,
+  ): void {
+    const lines = splitLines(text);
+    if (countDailyPageBlocks(lines) > 1) {
+      showBlockMessage(el, MULTIPLE_BLOCKS);
+      return;
+    }
+    const scope = scopeOf(lines);
+    if (!scope) {
+      showBlockMessage(el, NO_PAGE_MESSAGE);
+      return;
+    }
+
+    renderPage(el, lines.slice(scope.start, scope.end), new Date(), quote, {
+      date: noteDay,
+      accent: this.settings.accentColor,
+      tagColours: parseTagColours(this.settings.tagColours),
+      handlers: {
+        onToggle: (item, checked) => {
+          void this.editFile(sourcePath, (scope) => setChecklistItem(scope, item, checked));
+        },
+        onEdit: (block) => openBlockEditor(block, (edit) => void this.editFile(sourcePath, edit)),
+        onEditGreatThing: (item) =>
+          openGreatThingEditor(item, (edit) => void this.editFile(sourcePath, edit)),
+      },
+    });
+    // Size the page to the window once it is on screen, and again on every resize.
+    const page = el.querySelector<HTMLElement>(".daily-page");
+    if (page) keepFitted(page);
+  }
+
+  /**
+   * Redraws the blocks of the note being typed in, from the editor's text. Obsidian saves a note only
+   * after a pause, and a block draws from the saved note, so without this the page lags behind the typing.
+   * Redraws are batched to one per frame, from the text as it is when the frame runs.
+   */
+  private followEditor(editor: Editor, info: MarkdownView | MarkdownFileInfo): void {
+    const path = info.file?.path;
+    if (!path) return;
+    this.livePending = { editor, path };
+    if (this.liveFrame !== null) return;
+    this.liveFrame = requestAnimationFrame(() => {
+      this.liveFrame = null;
+      const pending = this.livePending;
+      this.livePending = null;
+      if (!pending) return;
+      const text = pending.editor.getValue();
+      for (const [el, block] of this.liveBlocks) {
+        // A block that has left the note stops being followed.
+        if (!el.isConnected) {
+          this.liveBlocks.delete(el);
+          continue;
+        }
+        if (block.path === pending.path) block.paint(text);
+      }
     });
   }
 }
