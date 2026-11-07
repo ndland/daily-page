@@ -1,0 +1,28 @@
+/*
+ * Daily Page: custom look. Copy this file into your vault's .obsidian/snippets/ folder and
+ * enable it under Settings → Appearance → CSS snippets. Edit it while Obsidian is open;
+ * Obsidian reloads snippets when you save, so changes show at once.
+ *
+ * Only the variables below need changing. Layout stays in the plugin.
+ */
+
+.daily-page {
+  /* Colours */
+  /* --dp-bg: #282a36; */
+  /* --dp-fg: #f8f8f2; */
+  /* --dp-ink: #6272a4; */     /* lines, borders, hour grid */
+  /* --dp-line: #44475a; */
+  /* --dp-accent: #bd93f9; */  /* highlights: blocks, running entry, today */
+  /* --dp-check: #8be9fd; */   /* ticked checklist boxes */
+
+  /* Size and spacing */
+  /* --dp-viewport-offset: 5rem; */  /* fallback only; the page is measured to fit */
+  /* --dp-page-gap: 1.5rem; */
+  /* --dp-page-pad-y: 1.5rem; */
+  /* --dp-page-pad-x: 1.75rem; */
+  /* --dp-radius: 6px; */
+  /* --dp-font-size: 1rem; */
+  /* --dp-day-size: 2.25rem; */
+  /* --dp-block-font-size: 0.85rem; */
+  /* --dp-note-font-size: 0.8rem; */
+}
