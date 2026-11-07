@@ -34,7 +34,10 @@ export function folderChain(path: string): string[] {
  * Whether a daily note path stays inside the vault. A path with a ".." part or a leading slash, or
  * a drive letter, could point at a file outside the vault, so it is refused.
  */
-export function isSafeDailyPattern(pattern: string): boolean {
+export function isSafeDailyPattern(pattern: unknown): boolean {
+  if (typeof pattern !== "string" || pattern === "" || pattern.trim() !== pattern) return false;
   if (/^([\\/]|[a-zA-Z]:)/.test(pattern)) return false;
-  return !pattern.split(/[\\/]/).includes("..");
+  // A segment that starts with a dot is a parent folder ("..") or a hidden one, such as the vault's
+  // own ".obsidian" folder, so daily notes never go there.
+  return pattern.split(/[\\/]/).every((segment) => !segment.trim().startsWith("."));
 }
