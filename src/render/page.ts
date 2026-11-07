@@ -27,6 +27,11 @@ export interface PageOptions {
   /** Tag name to colour, for activity labels such as "Email #work". */
   tagColours?: Record<string, string>;
   handlers?: PageHandlers;
+  /**
+   * The day the note is for. The date, moon phase, day of the year and mini calendar come from it, so an
+   * old note keeps its own day. Defaults to `now`. Running activities always use `now`.
+   */
+  date?: Date;
 }
 
 /** Draws the whole daily page into `root`, replacing anything already there. */
@@ -44,7 +49,8 @@ export function renderPage(
   // The top row, as on the Hobonichi page: the date at the top left, the todos at the top right.
   const checklist = readChecklist(noteLines);
   const top = el("div", "daily-page__top", page);
-  renderDateBlock(top, now);
+  const noteDay = options.date ?? now;
+  renderDateBlock(top, noteDay);
   const topRight = el("div", "daily-page__top-right", top);
   renderChecklist(topRight, checklist, options.handlers?.onToggle);
 
@@ -75,5 +81,5 @@ export function renderPage(
   // Finished todos sit at the foot of the notes column, where the empty space is.
   renderDoneList(notesEl, checklist);
   renderQuote(footerLeft, quote);
-  renderMiniCalendar(footer, now);
+  renderMiniCalendar(footer, noteDay);
 }

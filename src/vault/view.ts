@@ -13,8 +13,11 @@ import { keepFitted } from "../render/fit";
 import { setChecklistItem, type ScopeEdit } from "../entries/edit";
 import { MULTIPLE_BLOCKS, NO_PAGE_MESSAGE, countDailyPageBlocks, scopeOf } from "../logic/scope";
 import { parseTagColours } from "../logic/tags";
+import { storedQuoteFromSettings } from "../logic/quoteCache";
+import { createdMsOf, noteDateOf } from "../logic/noteDate";
 import type { QuoteText } from "../render/quote";
 import { PageEditor, reasonOf } from "./editFlow";
+import { DEFAULT_DAILY_PATTERN } from "../logic/paths";
 import { openBlockEditor, openGreatThingEditor } from "./editor";
 import { VIEW_SETTINGS } from "./settings";
 
@@ -59,10 +62,15 @@ async function editNote(path: string, edit: ScopeEdit): Promise<void> {
   await draw();
 }
 
-/** The quote the plugin last cached, or null when the plugin is not enabled or has none yet. */
-function cachedQuote(): QuoteText | null {
-  const quote = app.plugins?.plugins?.[PLUGIN_ID]?.settings?.quote;
+/** The quote the plugin kept for the given day, or null when the plugin is off or kept none for that day. */
+function cachedQuote(day: Date): QuoteText | null {
+  const quote = storedQuoteFromSettings(app.plugins?.plugins?.[PLUGIN_ID]?.settings?.quotes, day);
   return quote ? { text: quote.text, author: quote.author } : null;
+}
+
+/** The daily-note pattern the plugin uses, so the view reads the note's date the same way. */
+function dailyPattern(): string {
+  return app.plugins?.plugins?.[PLUGIN_ID]?.settings?.dailyPattern ?? DEFAULT_DAILY_PATTERN;
 }
 
 /** Reads the note and draws the page from its daily-page block. */
@@ -99,7 +107,9 @@ async function draw(): Promise<void> {
     return;
   }
 
-  renderPage(dv.container, lines.slice(scope.start, scope.end), new Date(), cachedQuote(), {
+  const noteDay = noteDateOf(path, dailyPattern(), createdMsOf(dv.current().file));
+  renderPage(dv.container, lines.slice(scope.start, scope.end), new Date(), cachedQuote(noteDay), {
+    date: noteDay,
     accent: VIEW_SETTINGS.accent,
     tagColours: parseTagColours(VIEW_SETTINGS.tagColours),
     handlers: {

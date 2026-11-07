@@ -11,14 +11,17 @@ import {
   normalizePath,
 } from "obsidian";
 import { QUOTE_SOURCE } from "./config";
-import { DEFAULT_ACCENT, DEFAULT_TAG_COLOURS } from "./defaults";
 import { TimelineLine, readTimeline, writeTimeline } from "./entries/format";
 import { LogOutcome, endRunning, logActivity, logNote } from "./entries/log";
 import { ScopeEdit, appendChecklistItem, appendGreatThing, setChecklistItem } from "./entries/edit";
-import { DEFAULT_DAILY_PATTERN, dailyNotePath, isSafeDailyPattern } from "./logic/paths";
+import { DEFAULT_DAILY_PATTERN, dailyNotePath, isSafeVaultPath } from "./logic/paths";
+import { dateFromNotePath, noteDateOf } from "./logic/noteDate";
+import { DEFAULT_NEW_NOTE_CONTENT, resolveNewNote } from "./logic/newNote";
+import { DEFAULT_SETTINGS, DailyPageSettings, normaliseSettings } from "./logic/settings";
+import { drawNoteQuote } from "./logic/noteQuote";
 import { parseTagColours } from "./logic/tags";
 import { MULTIPLE_BLOCKS, NO_PAGE_MESSAGE, countDailyPageBlocks, scopeOf } from "./logic/scope";
-import { StoredQuote, loadDailyQuote } from "./logic/quoteCache";
+import { QuoteStore, pruneQuotes } from "./logic/quoteCache";
 import { renderPage } from "./render/page";
 import type { QuoteText } from "./render/quote";
 import { keepFitted } from "./render/fit";
@@ -27,27 +30,6 @@ import { PageEditor, READ_ONLY_MESSAGE, reasonOf } from "./vault/editFlow";
 import { NoteCreator } from "./vault/noteCreator";
 import { openBlockEditor, openGreatThingEditor } from "./vault/editor";
 
-interface DailyPageSettings {
-  dailyPattern: string;
-  quote: StoredQuote | null;
-  /** Highlight colour for activity blocks and today's date in the mini calendar. */
-  accentColor: string;
-  /** One "tag #hex" pair per line. Activities whose label has the tag use that colour. */
-  tagColours: string;
-}
-
-const DEFAULT_SETTINGS: DailyPageSettings = {
-  dailyPattern: DEFAULT_DAILY_PATTERN,
-  quote: null,
-  accentColor: DEFAULT_ACCENT,
-  tagColours: DEFAULT_TAG_COLOURS,
-};
-
-/**
- * New daily notes hold their data inside the daily-page block. The page is what the reader
- * sees, so the raw text is hidden in reading view.
- */
-const NEW_NOTE_CONTENT = "```daily-page\n## Timeline\n\n## Checklist\n\n## Three things\n```\n";
 
 type LogAction = (timeline: TimelineLine[], now: number) => LogOutcome;
 
@@ -124,9 +106,16 @@ export default class DailyPagePlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<DailyPageSettings>) };
-    // A synced settings file could hold a path that leaves the vault. Such a path falls back to the default.
-    if (!isSafeDailyPattern(this.settings.dailyPattern)) this.settings.dailyPattern = DEFAULT_DAILY_PATTERN;
+    // Checks the saved values, moves an older single quote into the per-day store, and drops anything invalid.
+    const { settings, migrated } = normaliseSettings(await this.loadData());
+    this.settings = settings;
+    if (migrated) {
+      try {
+        await this.saveSettings();
+      } catch (error) {
+        new Notice(`Daily Page could not save its settings: ${reasonOf(error)}`);
+      }
+    }
   }
 
   async saveSettings(): Promise<void> {
@@ -207,9 +196,36 @@ export default class DailyPagePlugin extends Plugin {
   }
 
   /** Returns today's note, creating it and its folders if they do not exist. */
-  private ensureTodayNote(now: Date): Promise<TFile> {
+  private async ensureTodayNote(now: Date): Promise<TFile> {
     const path = normalizePath(dailyNotePath(now, this.settings.dailyPattern));
-    return this.notes.ensure(path, NEW_NOTE_CONTENT);
+    // An existing note is returned as it is, so the template is read only when a note has to be created.
+    const existing = this.app.vault.getAbstractFileByPath(path);
+    if (existing instanceof TFile) return existing;
+    return this.notes.ensure(path, await this.newNoteTemplate());
+  }
+
+  /**
+   * The content for a new daily note: the template note in the vault when one is set and usable, otherwise the
+   * built-in content. Every reason the template is not used is reported to the reader.
+   */
+  private async newNoteTemplate(): Promise<string> {
+    const path = this.settings.templatePath;
+    if (!path) return DEFAULT_NEW_NOTE_CONTENT;
+    const file = this.app.vault.getAbstractFileByPath(normalizePath(path));
+    if (!(file instanceof TFile)) {
+      new Notice(`The daily note template "${path}" was not found, so the built-in note is used.`);
+      return DEFAULT_NEW_NOTE_CONTENT;
+    }
+    let template: string;
+    try {
+      template = await this.app.vault.read(file);
+    } catch (error) {
+      new Notice(`The daily note template could not be read: ${reasonOf(error)}`);
+      return DEFAULT_NEW_NOTE_CONTENT;
+    }
+    const { content, problem } = resolveNewNote(template);
+    if (problem) new Notice(problem);
+    return content;
   }
 
   /** Adds an open todo to today's checklist. */
@@ -242,6 +258,19 @@ export default class DailyPagePlugin extends Plugin {
     }
   }
 
+  /** The quotes kept by day in the plugin's settings. */
+  private quoteStore(): QuoteStore {
+    return {
+      get: (day) => this.settings.quotes[day] ?? null,
+      set: async (quote) => {
+        // Days older than the kept window are dropped, so the saved settings do not grow without limit.
+        this.settings.quotes = pruneQuotes({ ...this.settings.quotes, [quote.date]: quote }, new Date());
+        // A read-only device keeps the quote in memory and writes no file, so the synced settings are not changed.
+        if (!this.isReadOnly()) await this.saveSettings();
+      },
+    };
+  }
+
   private askText(placeholder: string, onSubmit: (text: string) => void): void {
     new PromptModal(this.app, placeholder, onSubmit).open();
   }
@@ -254,6 +283,12 @@ export default class DailyPagePlugin extends Plugin {
     const now = new Date();
 
     const file = this.app.vault.getAbstractFileByPath(sourcePath);
+    // The note's own day: its path, or its creation day, rather than today.
+    const noteDay = noteDateOf(
+      sourcePath,
+      this.settings.dailyPattern,
+      file instanceof TFile ? file.stat.ctime : undefined,
+    );
     let content: string;
     try {
       content = file instanceof TFile ? await this.app.vault.read(file) : "";
@@ -284,6 +319,7 @@ export default class DailyPagePlugin extends Plugin {
     const blockLines = lines.slice(scope.start, scope.end);
     const draw = (quote: QuoteText | null): void => {
       renderPage(el, blockLines, now, quote, {
+        date: noteDay,
         accent: this.settings.accentColor,
         tagColours: parseTagColours(this.settings.tagColours),
         handlers: {
@@ -300,24 +336,16 @@ export default class DailyPagePlugin extends Plugin {
       if (page) keepFitted(page);
     };
 
-    // The page is drawn at once with the cached quote, so it never waits on the network. A fresh
-    // quote, when the cache is out of date and the fetch works, redraws the footer.
-    const cached = this.settings.quote;
-    draw(cached);
-    const quote = await loadDailyQuote(
-      {
-        get: () => this.settings.quote,
-        set: async (stored) => {
-          this.settings.quote = stored;
-          // A read-only device keeps the quote in memory and writes no file, so the synced
-          // settings file is not changed from here.
-          if (!this.isReadOnly()) await this.saveSettings();
-        },
-      },
-      QUOTE_SOURCE,
+    // The page is drawn at once with the quote kept for its own day. Only today's note, named by its path, fetches.
+    await drawNoteQuote({
+      store: this.quoteStore(),
+      source: QUOTE_SOURCE,
+      noteDay,
+      namedByPath: dateFromNotePath(sourcePath, this.settings.dailyPattern) !== null,
       now,
-    );
-    if (quote !== cached && el.isConnected) draw(quote);
+      draw,
+      stillShown: () => el.isConnected,
+    });
   }
 }
 
@@ -366,7 +394,7 @@ class DailyPageSettingTab extends PluginSettingTab {
       .addText((text) =>
         text.setValue(this.plugin.settings.dailyPattern).onChange(async (value) => {
           const pattern = value.trim() || DEFAULT_DAILY_PATTERN;
-          if (!isSafeDailyPattern(pattern)) {
+          if (!isSafeVaultPath(pattern)) {
             new Notice('The daily note path must stay inside the vault: no ".." and no leading slash.');
             return;
           }
@@ -383,6 +411,21 @@ class DailyPageSettingTab extends PluginSettingTab {
       )
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.isReadOnly()).onChange((value) => this.plugin.setReadOnly(value)),
+      );
+
+    new Setting(containerEl)
+      .setName("Daily note template")
+      .setDesc("Optional. Path of a note in the vault to copy new daily notes from, such as 99_System/Templates/Daily note.md. Leave blank to use the built-in note.")
+      .addText((text) =>
+        text.setValue(this.plugin.settings.templatePath).onChange(async (value) => {
+          const path = value.trim();
+          if (path && !isSafeVaultPath(path)) {
+            new Notice('The template path must stay inside the vault: no ".." and no leading slash.');
+            return;
+          }
+          this.plugin.settings.templatePath = path;
+          await this.plugin.saveSettings();
+        }),
       );
 
     const colour = new Setting(containerEl)

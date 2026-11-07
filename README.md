@@ -34,6 +34,16 @@ Click a block, a side note, a todo or a bullet in Three things to edit it. Click
 
 The footer quote comes from ZenQuotes (zenquotes.io), fetched at most once a day. The page shows the attribution with each quote, as ZenQuotes' free use requires.
 
+Each day's quote is kept in the plugin's data, so a past note shows the quote kept for its own day. A past day with no kept quote shows none, because it cannot be fetched again.
+
+## Daily note setup
+
+- Put exactly one `daily-page` block in the note, with `## Timeline`, `## Checklist` and `## Three things` inside it.
+- Leave a blank first line in the note. Without it, the cursor at the top can show the block's raw code.
+- To create new notes from a template, set the template path in the plugin settings. The template must hold exactly one complete `daily-page` block. That block is reset to the three empty sections for each new note, so entries in the template are not copied. If the template is unusable, the built-in note is used and the reason is shown.
+- To hide the note title and properties box in reading and editing, set `cssclasses: daily-note` in the note's frontmatter and add the snippet rules from `styles/vault.css`.
+- A `dataviewjs` block in a template is executable code, so only use templates you trust.
+
 ## Development
 
 ```bash

@@ -217,20 +217,20 @@ Note: `#6272A4` on `#282A36` has low contrast. Use it for lines and decoration o
 - With no network, show the most recent cached quote.
 - With no cache and no network, hide the footer quote without showing an error.
 - The provider is chosen after checking reliability, display licence, rate limits, and attribution requirements.
-- The plugin is the only code that fetches a quote. The Dataview view makes no network call. It shows the quote the plugin has cached, so a note never shows a different quote from the plugin, and a note never has a quote written into it.
+- The plugin is the only code that fetches a quote. The Dataview view makes no network call. It shows the quote the plugin kept for the note's own day, so each note keeps the quote from the day it is for, and a note never has a quote written into it. Only today's note fetches; an earlier day with no kept quote shows none.
 
 **Provider decision: ZenQuotes** (`https://zenquotes.io/api/today`)
 - Attribution: required on the free tier. The official ZenQuotes documentation (docs.zenquotes.io) asks free users to link back to zenquotes.io. The footer shows "Inspirational quotes provided by ZenQuotes API" with that link, always alongside a quote.
 - Rate limit: confirmed on docs.zenquotes.io. Requests are restricted by IP to 5 per 30 seconds by default. The code makes at most one attempt every 15 minutes, far below that limit.
 - Display licence: the official documentation's attribution requirement is the only licence condition published. The docs contain no terms on commercial or redistributed use, and zenquotes.io/terms does not exist. This is an open risk for distributing the plugin beyond personal use.
-- Reliability: a failed or throttled attempt falls back to the most recent cached quote. With no cache, no quote is shown and no error appears.
+- Reliability: a failed or throttled attempt shows no quote for today, and no error appears. An earlier day shows only the quote kept on that day.
 - Status: selected. The rate limit and attribution are confirmed. Redistribution terms are open (section 8).
 
 **Acceptance**
 - Two renders on the same day trigger one fetch (checked with a mocked fetch in a unit test).
-- With the network off, the cached quote shows and no error appears.
-- With no cache and no network, the footer is hidden and no error is shown.
-- The first render of a note does not wait on the network: it draws at once with the cached quote.
+- With the network off, the quote kept for that note's day shows and no error appears.
+- With no kept quote for the day and no network, the footer is hidden and no error is shown.
+- The first render of a note does not wait on the network: it draws at once with the quote kept for its day.
 
 ## 8. Open questions (not blocking)
 

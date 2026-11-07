@@ -1,7 +1,7 @@
 /** Default daily-note path. Matches folders such as 05_Daily/2026/11-November/2026-11-06.md. */
 export const DEFAULT_DAILY_PATTERN = "05_Daily/{YYYY}/{MM}-{MMMM}/{YYYY}-{MM}-{DD}.md";
 
-const LONG_MONTHS = [
+export const LONG_MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
@@ -34,10 +34,13 @@ export function folderChain(path: string): string[] {
  * Whether a daily note path stays inside the vault. A path with a ".." part or a leading slash, or
  * a drive letter, could point at a file outside the vault, so it is refused.
  */
-export function isSafeDailyPattern(pattern: unknown): boolean {
+export function isSafeVaultPath(pattern: unknown): boolean {
   if (typeof pattern !== "string" || pattern === "" || pattern.trim() !== pattern) return false;
   if (/^([\\/]|[a-zA-Z]:)/.test(pattern)) return false;
   // A segment that starts with a dot is a parent folder ("..") or a hidden one, such as the vault's
   // own ".obsidian" folder, so daily notes never go there.
   return pattern.split(/[\\/]/).every((segment) => !segment.trim().startsWith("."));
 }
+
+/** A daily-note pattern must stay inside the vault. Kept under its older name for existing callers. */
+export const isSafeDailyPattern = isSafeVaultPath;
