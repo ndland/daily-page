@@ -7,8 +7,12 @@ const RESERVE_PX = 16;
 /** Below this height the page is allowed to scroll rather than squash its contents. */
 const MIN_HEIGHT_PX = 320;
 
-/** Obsidian's reading-view scroller. Its padding surrounds the note, so the fit must respect it. */
-const READING_SCROLLER = ".markdown-preview-view";
+/**
+ * The scroller the note sits in: the reading view, or the editor in live preview. Its padding surrounds the
+ * note, and the content above the page in the editor counts towards the space the page can use, so the
+ * fit must respect both.
+ */
+const READING_SCROLLER = ".markdown-preview-view, .cm-scroller";
 
 /**
  * Space the note holds below the page: the scroller's bottom padding, plus the height and
@@ -263,14 +267,26 @@ export function clearFit(page: HTMLElement): void {
 }
 
 /**
- * The observer watching each scroller. A note re-renders its page on every edit, so the observer
- * for the scroller is replaced rather than stacked, and a stale one never outlives its page.
+ * The editor's caret and selection layers change on every cursor move. They do not change the space the page can use, so
+ * changes inside them never refit the page.
  */
-const watchers = new WeakMap<Element, ResizeObserver>();
+function isCaretLayer(node: Node): boolean {
+  const element = node instanceof Element ? node : node.parentElement;
+  return element?.closest(".cm-cursorLayer, .cm-selectionLayer") != null;
+}
 
 /**
- * Fits the page now and again whenever the window is resized. Re-rendering the page replaces the
- * watcher for its scroller, and a watcher whose page has left the note disconnects itself.
+ * How each scroller's watcher is stopped. A note re-renders its page on every edit, so the watcher for the
+ * scroller is replaced rather than stacked, and a stale one never outlives its page.
+ */
+const watchers = new WeakMap<Element, () => void>();
+
+/**
+ * Fits the page now, and again whenever the space it can use changes: when the window or the note's
+ * scroller is resized, and when anything else in the note changes around the page, such as the properties
+ * box or the note's own lines in the editor. Those change the space without resizing the scroller, so the
+ * page would otherwise keep a size that no longer fits. Re-rendering the page replaces the watcher for its
+ * scroller, and a watcher whose page has left the note stops itself.
  */
 export function keepFitted(page: HTMLElement): void {
   // Labels are spread after the page is sized, since their positions depend on its height.
@@ -279,7 +295,7 @@ export function keepFitted(page: HTMLElement): void {
       // On a narrow screen the page scrolls, so nothing is fitted or cut short.
       clearFit(page);
     } else if (!fitToScreen(page)) {
-      // Not laid out yet: the observer below runs this again once the note has a size.
+      // Not laid out yet: the watcher below runs this again once the note has a size.
       return;
     }
     const timeline = page.querySelector<HTMLElement>(".daily-page__timeline");
@@ -288,7 +304,7 @@ export function keepFitted(page: HTMLElement): void {
   // Obsidian can draw a view before it has a size, and window resizes alone do not catch that.
   // Watching the note's scroller catches the first real layout, and every later resize.
   const target = page.closest<HTMLElement>(READING_SCROLLER) ?? page.parentElement ?? page;
-  watchers.get(target)?.disconnect();
+  watchers.get(target)?.();
   // A drag resizes the window many times a frame. One redraw per frame is enough, and the last one
   // wins, so the page is never drawn for a size that has already gone.
   let frame: number | null = null;
@@ -297,18 +313,29 @@ export function keepFitted(page: HTMLElement): void {
     frame = requestAnimationFrame(() => {
       frame = null;
       refresh();
+      // The fit's own writes are inside the page and already ignored. Drop the records they queued.
+      mutations.takeRecords();
     });
   };
-  const observer = new ResizeObserver(() => {
-    if (!page.isConnected) {
-      observer.disconnect();
-      if (watchers.get(target) === observer) watchers.delete(target);
-      return;
-    }
+  const stop = (): void => {
+    resize.disconnect();
+    mutations.disconnect();
+    if (watchers.get(target) === stop) watchers.delete(target);
+  };
+  const resize = new ResizeObserver(() => {
+    if (!page.isConnected) return stop();
     scheduleRefresh();
   });
-  observer.observe(target);
-  watchers.set(target, observer);
+  // A change inside the page is the fit's own work (the grid, the note's rows), so it is ignored. A change
+  // anywhere else in the scroller changes the space the page can use, so the page is fitted again.
+  const mutations = new MutationObserver((records) => {
+    if (!page.isConnected) return stop();
+    if (records.some((record) => !page.contains(record.target) && !isCaretLayer(record.target))) scheduleRefresh();
+  });
+  resize.observe(target);
+  // Styles and classes count too: a line can grow when its class changes, and that moves the page's space.
+  mutations.observe(target, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["style", "class"] });
+  watchers.set(target, stop);
   refresh();
   // Text is measured against the font in use. Obsidian can swap in its own font after the first
   // draw, which moves every baseline, so align again once the fonts have loaded.

@@ -20,7 +20,7 @@ export function renderDoneList(parent: HTMLElement, items: ChecklistItem[]): voi
   labelRow.className = "daily-page__done-row";
   const label = document.createElement("span");
   label.className = "daily-page__done-label";
-  label.textContent = `Done today (${done.length})`;
+  label.textContent = `Done (${done.length})`;
   labelRow.appendChild(label);
   line.appendChild(labelRow);
 

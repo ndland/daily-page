@@ -11,7 +11,7 @@ describe("finished todos line", () => {
 
     const names = [...parent.querySelectorAll(".daily-page__done-item")].map((el) => el.textContent);
     expect(names).toEqual(["Walk", "Read ten pages"]);
-    expect(parent.querySelector(".daily-page__done-label")?.textContent).toBe("Done today (2)");
+    expect(parent.querySelector(".daily-page__done-label")?.textContent).toBe("Done (2)");
     expect(parent.querySelector<HTMLElement>(".daily-page__done-more")?.hidden).toBe(true);
   });
 

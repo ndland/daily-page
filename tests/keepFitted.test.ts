@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { drawGrid, keepFitted } from "../src/render/fit";
 import { renderPage } from "../src/render/page";
 
@@ -95,6 +95,85 @@ describe("keepFitted redraws", () => {
 
     expect(first.disconnected).toBe(true);
     expect(observers[observers.length - 1].disconnected).toBe(false);
+  });
+});
+
+/** Lets the browser deliver queued mutation records, which it does after the current task. */
+function deliverMutations(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+describe("keepFitted watches the note around the page", () => {
+  it("queues one redraw for a change outside the page, such as a line added beside it", async () => {
+    const { host, page } = renderInHost();
+    keepFitted(page);
+    await deliverMutations();
+    frames = [];
+
+    host.appendChild(document.createElement("div"));
+    await deliverMutations();
+    expect(frames).toHaveLength(1);
+  });
+
+  it("queues a redraw for a style or class change outside the page", async () => {
+    const { host, page } = renderInHost();
+    keepFitted(page);
+    await deliverMutations();
+    frames = [];
+
+    host.setAttribute("class", "is-changed");
+    await deliverMutations();
+    expect(frames).toHaveLength(1);
+  });
+
+  it("does not redraw for a change inside the page, since that is the page's own work", async () => {
+    const { page } = renderInHost();
+    keepFitted(page);
+    await deliverMutations();
+    frames = [];
+
+    page.querySelector(".daily-page__timeline")?.appendChild(document.createElement("span"));
+    page.style.height = "123px";
+    await deliverMutations();
+    expect(frames).toHaveLength(0);
+  });
+
+  it("does not redraw for the fit's own writes", async () => {
+    const { page } = renderInHost();
+    keepFitted(page);
+    await deliverMutations();
+    expect(frames).toHaveLength(0);
+  });
+
+  it("ignores the editor's caret and selection layers, which change on every cursor move", async () => {
+    const { host, page } = renderInHost();
+    const caret = document.createElement("div");
+    caret.className = "cm-cursorLayer";
+    host.appendChild(caret);
+    keepFitted(page);
+    await deliverMutations();
+    frames = [];
+
+    caret.style.left = "40px";
+    caret.appendChild(document.createElement("div"));
+    await deliverMutations();
+    expect(frames).toHaveLength(0);
+  });
+
+  it("stops watching once the page has left the note", async () => {
+    const { host, page } = renderInHost();
+    keepFitted(page);
+    await deliverMutations();
+    const disconnect = vi.spyOn(MutationObserver.prototype, "disconnect");
+    frames = [];
+
+    host.remove();
+    host.appendChild(document.createElement("div"));
+    await deliverMutations();
+
+    expect(disconnect).toHaveBeenCalled();
+    expect(frames).toHaveLength(0);
+    disconnect.mockRestore();
   });
 });
 
