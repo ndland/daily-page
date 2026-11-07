@@ -32,6 +32,18 @@ export interface TimelineIssue {
 }
 
 const TIMELINE_HEADING = "## Timeline";
+export const CHECKLIST_HEADING = "## Checklist";
+
+/** The most todos a checklist holds. Adding a todo beyond this is refused. */
+export const CHECKLIST_LIMIT = 5;
+
+/** A checklist line: the box ("x" or "X" when ticked) and the todo's text. */
+export const CHECKLIST_LINE = /^- \[( |x|X)\] (.+)$/;
+
+export const GREAT_THINGS_HEADING = "## Three things";
+
+/** The most bullets the Three things box shows. Adding one beyond this is refused. */
+export const GREAT_THINGS_LIMIT = 3;
 const SECTION_HEADING = /^## /;
 
 const ACTIVITY_CLOSED = /^- (\d{2}:\d{2})-(\d{2}:\d{2}) (.+)$/;
@@ -118,6 +130,9 @@ export function writeTimeline(noteLines: string[], timeline: TimelineLine[]): st
   return [...trimmed, TIMELINE_HEADING, ...body];
 }
 
+/** The problem reported when a second activity is left running. Edits check for it by this text. */
+export const RUNNING_CONFLICT = "More than one running activity";
+
 /** Problems a user should see. Malformed lines are kept as written, never deleted. */
 export function validateTimeline(timeline: TimelineLine[]): TimelineIssue[] {
   const issues: TimelineIssue[] = [];
@@ -129,7 +144,7 @@ export function validateTimeline(timeline: TimelineLine[]): TimelineIssue[] {
     }
     if (line.entry?.kind === "activity" && line.entry.end === null) {
       if (runningSeen) {
-        issues.push({ index, message: "More than one running activity" });
+        issues.push({ index, message: RUNNING_CONFLICT });
       }
       runningSeen = true;
     }
