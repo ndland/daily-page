@@ -10,6 +10,8 @@ const SERVED_PREFIXES = ["/harness/", "/styles/"];
  * path that resolves outside `root`.
  */
 export function resolveRequest(root, urlPath) {
+  // A backslash is a path separator on Windows. Refusing it here stops "..\\" from climbing out of a served folder.
+  if (urlPath.includes("\\")) return null;
   if (!SERVED_PREFIXES.some((prefix) => urlPath.startsWith(prefix))) return null;
   if (urlPath.split("/").some((segment) => segment.startsWith("."))) return null;
 
@@ -28,9 +30,11 @@ export function isAllowedHost(hostHeader, port) {
 }
 
 /**
- * Whether a request came from another site. A page on another site that asks for this server is
- * marked "cross-site" by the browser. The harness only serves its own pages, so those are refused.
+ * Whether the browser says a request may be served. Sec-Fetch-Site is "same-origin" for the harness's
+ * own pages and "none" for a visit typed into the address bar. A request from another site, or from
+ * another localhost port ("same-site"), is refused. A request with no such header is a non-browser
+ * client, such as the test runner, and is allowed.
  */
-export function isCrossSite(fetchSite) {
-  return fetchSite === "cross-site";
+export function isAllowedFetchSite(fetchSite) {
+  return fetchSite === undefined || fetchSite === "same-origin" || fetchSite === "none";
 }

@@ -1,11 +1,11 @@
 // A minimal static server for the harness, so the built-in browser can open it over http.
 // It listens on 127.0.0.1 only. It refuses requests whose Host header is not localhost, and requests
-// that another site made in the browser.
+// the browser marks as coming from another site, or from another localhost port.
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isAllowedHost, isCrossSite, resolveRequest } from "./paths.mjs";
+import { isAllowedFetchSite, isAllowedHost, resolveRequest } from "./paths.mjs";
 
 // The served root is this project, wherever the server is started from.
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -13,7 +13,7 @@ const port = Number(process.env.PORT) || 5173;
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
 
 createServer(async (req, res) => {
-  if (!isAllowedHost(req.headers.host, port) || isCrossSite(req.headers["sec-fetch-site"])) {
+  if (!isAllowedHost(req.headers.host, port) || !isAllowedFetchSite(req.headers["sec-fetch-site"])) {
     res.writeHead(403).end();
     return;
   }

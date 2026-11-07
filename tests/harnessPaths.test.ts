@@ -1,6 +1,6 @@
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { isAllowedHost, isCrossSite, resolveRequest } from "../harness/paths.mjs";
+import { isAllowedFetchSite, isAllowedHost, resolveRequest } from "../harness/paths.mjs";
 
 const ROOT = resolve("some", "daily-page");
 
@@ -41,11 +41,23 @@ describe("isAllowedHost", () => {
   });
 });
 
-describe("isCrossSite", () => {
-  it("refuses requests another site made, and allows the harness own pages and direct visits", () => {
-    expect(isCrossSite("cross-site")).toBe(true);
-    expect(isCrossSite("same-origin")).toBe(false);
-    expect(isCrossSite("none")).toBe(false);
-    expect(isCrossSite(undefined)).toBe(false);
+describe("resolveRequest with Windows separators", () => {
+  it("refuses a backslash, so a Windows path cannot climb out of a served folder", () => {
+    const up = String.fromCharCode(92);
+    expect(resolveRequest(ROOT, "/styles/x" + up + ".." + up + ".." + up + ".env")).toBeNull();
+    expect(resolveRequest(ROOT, "/styles/x" + up + ".." + up + "package.json")).toBeNull();
+  });
+});
+
+describe("isAllowedFetchSite", () => {
+  it("allows the harness's own pages, a visit typed in the address bar, and non-browser clients", () => {
+    expect(isAllowedFetchSite("same-origin")).toBe(true);
+    expect(isAllowedFetchSite("none")).toBe(true);
+    expect(isAllowedFetchSite(undefined)).toBe(true);
+  });
+
+  it("refuses requests from another site, and from another localhost port", () => {
+    expect(isAllowedFetchSite("cross-site")).toBe(false);
+    expect(isAllowedFetchSite("same-site")).toBe(false);
   });
 });
