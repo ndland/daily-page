@@ -1,2 +1,6 @@
 node_modules/
 dist/
+harness/dist/
+release/
+reports/
+research_notes/
