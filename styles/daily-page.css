@@ -21,6 +21,10 @@
   --dp-line: #44475a;
   --dp-accent: #bd93f9;
   --dp-check: #8be9fd;
+  /* Finished todos: muted, so they read as done without drawing the eye like an open todo. */
+  --dp-done: #9298b0;
+  /* The line through a finished todo. */
+  --dp-done-strike: #ff5555;
 
   /* Layout */
   --dp-hours: 21;
@@ -428,6 +432,13 @@
   line-height: calc(var(--dp-dot-size) * 2);
 }
 
+/* The time of a side note stands out from the note's text. */
+.daily-page__note-time {
+  color: var(--dp-accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .daily-page__out-of-axis {
   font-style: italic;
 }
@@ -475,9 +486,16 @@
   letter-spacing: 0.08em;
 }
 
+/* Finished todos are muted and struck through, with a tick in front, so they read as done at a glance. */
 .daily-page__done-item {
+  color: var(--dp-done);
   text-decoration: line-through;
-  color: var(--dp-check);
+  text-decoration-color: var(--dp-done-strike);
+  text-decoration-thickness: 1px;
+}
+
+.daily-page__done-item::before {
+  content: "\2713\00a0";
 }
 
 

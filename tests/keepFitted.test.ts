@@ -66,6 +66,16 @@ describe("keepFitted redraws", () => {
     expect(page.style.height).toBe("752px");
   });
 
+  it("queues a new frame for a resize that comes after the last frame ran", () => {
+    const { page } = renderInHost();
+    keepFitted(page);
+    const observer = observers[observers.length - 1];
+    fireResize(observer);
+    runFrames();
+    fireResize(observer);
+    expect(frames).toHaveLength(1);
+  });
+
   it("disconnects the observer of a page that has left the note", () => {
     const { host, page } = renderInHost();
     keepFitted(page);

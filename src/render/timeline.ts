@@ -184,7 +184,12 @@ export function renderBlocks(
       // Placed by percentage here, then snapped to the grid once the page has its size (keepFitted).
       el.style.top = `${block.topPct}%`;
       el.dataset.topPct = String(block.topPct);
-      el.textContent = `${block.timeText}  ${block.label}`;
+      // The time is its own element, so it can be styled apart from the note's text. The space after it
+      // keeps the text readable when it is copied.
+      const time = document.createElement("span");
+      time.className = "daily-page__note-time";
+      time.textContent = block.timeText;
+      el.append(time, document.createTextNode(` ${block.label}`));
       if (block.outOfAxis) el.classList.add("daily-page__out-of-axis");
       if (onEdit) makeClickable(el, () => onEdit(block));
       notesEl.appendChild(el);
