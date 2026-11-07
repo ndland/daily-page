@@ -1,7 +1,7 @@
 import type { TFile, Vault } from "obsidian";
 import type { ScopeEdit } from "../entries/edit";
 import { minutesOfDay } from "../logic/time";
-import { replaceScope, scopeOf } from "../logic/scope";
+import { NO_PAGE_MESSAGE, replaceScope, scopeOf } from "../logic/scope";
 
 /** The page's lines before and after one edit. Undo uses these, and nothing outside the page. */
 export interface EditRecord {
@@ -19,13 +19,40 @@ type TextResult =
   | { ok: true; text: string; before: string[]; after: string[]; changed: boolean }
   | { ok: false; message: string };
 
+/**
+ * A note split into its lines, with the line ending that follows each one. The last ending is "",
+ * since the last line has none. Keeping the endings lets an edit change the page's lines and leave
+ * every other byte of the note as it was.
+ */
+interface SplitNote {
+  lines: string[];
+  endings: string[];
+}
+
 function sameLines(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((line, i) => line === b[i]);
 }
 
+/** Splits on CRLF or LF, and records which ending each line had. */
+function splitKeepingEndings(content: string): SplitNote {
+  const lines: string[] = [];
+  const endings: string[] = [];
+  const pattern = /\r?\n/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(content)) !== null) {
+    lines.push(content.slice(last, match.index));
+    endings.push(match[0]);
+    last = match.index + match[0].length;
+  }
+  lines.push(content.slice(last));
+  endings.push("");
+  return { lines, endings };
+}
+
 /**
- * The line ending used when the note is written back: CRLF when most of its lines end that way,
- * otherwise LF. A note can mix the two, so the split below accepts either.
+ * The line ending used for lines an edit adds: CRLF when most of the note's lines end that way,
+ * otherwise LF.
  */
 function dominantLineEnding(content: string): string {
   const crlf = content.split("\r\n").length - 1;
@@ -35,13 +62,14 @@ function dominantLineEnding(content: string): string {
 
 /**
  * Applies an edit to the page in a note's text. Pure: it returns the new text, and writes nothing.
- * Lines are split the same way the renderer splits them (CRLF or LF), so a mixed-ending note reads
- * the same here as it does on the page. A change that leaves the page as it was returns the text
- * unchanged.
+ * Lines outside the page keep their own endings, byte for byte, even in a note that mixes CRLF and
+ * LF. Lines the edit adds use the note's dominant ending. A change that leaves the page as it was
+ * returns the text unchanged.
  */
 export function applyToText(content: string, edit: ScopeEdit, minute: number): TextResult {
-  const lines = content.split(/\r?\n/);
+  const { lines, endings } = splitKeepingEndings(content);
   const scope = scopeOf(lines);
+  if (!scope) return { ok: false, message: NO_PAGE_MESSAGE };
   const before = lines.slice(scope.start, scope.end);
 
   const outcome = edit(before, minute);
@@ -49,7 +77,15 @@ export function applyToText(content: string, edit: ScopeEdit, minute: number): T
 
   const changed = !sameLines(before, outcome.lines);
   if (!changed) return { ok: true, text: content, before, after: outcome.lines, changed };
-  const text = replaceScope(lines, scope, outcome.lines).join(dominantLineEnding(content));
+
+  // The page's last line keeps the ending the note had after the page, so the text below the page
+  // does not move. Every other line of the page takes the note's dominant ending.
+  const eol = dominantLineEnding(content);
+  const tail = scope.end > scope.start ? endings[scope.end - 1] : eol;
+  const pageEndings = outcome.lines.map((_, i) => (i === outcome.lines.length - 1 ? tail : eol));
+  const newLines = replaceScope(lines, scope, outcome.lines);
+  const newEndings = [...endings.slice(0, scope.start), ...pageEndings, ...endings.slice(scope.end)];
+  const text = newLines.map((line, i) => line + newEndings[i]).join("");
   return { ok: true, text, before, after: outcome.lines, changed };
 }
 

@@ -246,3 +246,53 @@ describe("applyNoteEdit, further cases", () => {
     expect(vault.content).not.toContain("- [ ] Water");
   });
 });
+
+describe("applyNoteEdit, bytes outside the page", () => {
+  it("keeps the exact line endings of text outside the page in a mixed-ending note", async () => {
+    const mixed = "Intro\n```daily-page\r\n## Timeline\r\n## Checklist\r\n- [ ] Walk\r\n```\r\nOutro\r\n";
+    const vault = new FakeVault(mixed);
+    await applyNoteEdit(vault.asVault(), FILE, (scope) => appendChecklistItem(scope, "Read"), NOW);
+
+    expect(vault.content).toBe(
+      "Intro\n```daily-page\r\n## Timeline\r\n## Checklist\r\n- [ ] Walk\r\n- [ ] Read\r\n```\r\nOutro\r\n",
+    );
+  });
+
+  it("refuses, and writes nothing, when the edit no longer applies at write time", async () => {
+    const vault = new FakeVault(NOTE);
+    // The preview reads NOTE, but the note changes before the write, so the write sees a different page.
+    vi.spyOn(vault, "read").mockResolvedValue(NOTE);
+    const changed = NOTE.replace("- [ ] Walk", "- [ ] Walk and talk");
+    vault.content = changed;
+
+    const result = await applyNoteEdit(
+      vault.asVault(),
+      FILE,
+      (scope) => setChecklistItem(scope, { raw: "- [ ] Walk", index: 0 }, true),
+      NOW,
+    );
+
+    expect(result.ok).toBe(false);
+    expect(vault.content).toBe(changed);
+  });
+});
+
+describe("applyNoteEdit, notes with no complete page", () => {
+  it("refuses, and writes nothing, to a block that is never closed", async () => {
+    const unclosed = "```daily-page\n## Timeline\n## Checklist\n- [ ] Walk\n\nThe reader's own text.";
+    const vault = new FakeVault(unclosed);
+    const result = await applyNoteEdit(vault.asVault(), FILE, (scope) => appendChecklistItem(scope, "Read"), NOW);
+
+    expect(result.ok).toBe(false);
+    expect(vault.content).toBe(unclosed);
+  });
+
+  it("refuses to write into a note's own checklist when it has no daily-page block", async () => {
+    const own = "# Shopping\n## Checklist\n- [ ] Milk";
+    const vault = new FakeVault(own);
+    const result = await applyNoteEdit(vault.asVault(), FILE, (scope) => appendChecklistItem(scope, "Eggs"), NOW);
+
+    expect(result.ok).toBe(false);
+    expect(vault.content).toBe(own);
+  });
+});

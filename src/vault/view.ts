@@ -6,15 +6,15 @@
  * read from the plugin's settings, so the plugin is the only code that talks to ZenQuotes. With
  * the plugin disabled, the footer shows no quote.
  *
- * Edits go through the same write path as the plugin (applyNoteEdit).
+ * Edits go through the same write path as the plugin (PageEditor, which uses applyNoteEdit).
  */
 import { renderPage } from "../render/page";
 import { keepFitted } from "../render/fit";
 import { setChecklistItem, type ScopeEdit } from "../entries/edit";
-import { countDailyPageBlocks, scopeOf } from "../logic/scope";
+import { NO_PAGE_MESSAGE, countDailyPageBlocks, scopeOf } from "../logic/scope";
 import { parseTagColours } from "../logic/tags";
 import type { QuoteText } from "../render/quote";
-import { applyNoteEdit } from "./noteEdit";
+import { PageEditor, reasonOf } from "./editFlow";
 import { openBlockEditor, openGreatThingEditor } from "./editor";
 import { VIEW_SETTINGS } from "./settings";
 
@@ -25,6 +25,9 @@ declare const app: any;
 const PLUGIN_ID = "daily-page";
 
 const MULTIPLE_BLOCKS = "This note has more than one daily page. Keep one daily-page block, then reload.";
+
+/** One editor for this view, so its edits are queued in the order they are made. */
+const pages = new PageEditor(app.vault, () => new Date());
 
 /** A short message at the top of the page, for example when an edit is refused. */
 function showMessage(text: string): void {
@@ -37,7 +40,7 @@ function showMessage(text: string): void {
 
 /**
  * Applies an edit to the daily-page block of a note, then redraws. The write itself is shared
- * with the plugin (applyNoteEdit), so both keep the same guarantees.
+ * with the plugin (PageEditor), so both keep the same guarantees.
  */
 async function editNote(path: string, edit: ScopeEdit): Promise<void> {
   const file = app.vault.getAbstractFileByPath(path);
@@ -46,14 +49,9 @@ async function editNote(path: string, edit: ScopeEdit): Promise<void> {
     return;
   }
 
-  try {
-    const result = await applyNoteEdit(app.vault, file, edit, new Date());
-    if (!result.ok) {
-      showMessage(result.message);
-      return;
-    }
-  } catch (error) {
-    showMessage(`The note could not be saved: ${error instanceof Error ? error.message : String(error)}`);
+  const message = await pages.edit(file, edit);
+  if (message) {
+    showMessage(message);
     return;
   }
   await draw();
@@ -68,7 +66,14 @@ function cachedQuote(): QuoteText | null {
 /** Reads the note and draws the page from its daily-page block. */
 async function draw(): Promise<void> {
   const path: string = dv.current().file.path;
-  const source: string = await dv.io.load(path);
+  let source: string;
+  try {
+    source = await dv.io.load(path);
+  } catch (error) {
+    dv.container.replaceChildren();
+    showMessage(`The note could not be read: ${reasonOf(error)}`);
+    return;
+  }
   const lines = source.split(/\r?\n/);
   dv.container.replaceChildren();
   if (countDailyPageBlocks(lines) > 1) {
@@ -80,6 +85,13 @@ async function draw(): Promise<void> {
     return;
   }
   const scope = scopeOf(lines);
+  if (!scope) {
+    const notice = document.createElement("div");
+    notice.className = "daily-page__message";
+    notice.textContent = NO_PAGE_MESSAGE;
+    dv.container.appendChild(notice);
+    return;
+  }
 
   renderPage(dv.container, lines.slice(scope.start, scope.end), new Date(), cachedQuote(), {
     accent: VIEW_SETTINGS.accent,

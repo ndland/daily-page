@@ -29,3 +29,12 @@ export function folderChain(path: string): string[] {
   const parts = folderOf(path).split("/").filter(Boolean);
   return parts.map((_, index) => parts.slice(0, index + 1).join("/"));
 }
+
+/**
+ * Whether a daily note path stays inside the vault. A path with a ".." part or a leading slash, or
+ * a drive letter, could point at a file outside the vault, so it is refused.
+ */
+export function isSafeDailyPattern(pattern: string): boolean {
+  if (/^([\\/]|[a-zA-Z]:)/.test(pattern)) return false;
+  return !pattern.split(/[\\/]/).includes("..");
+}

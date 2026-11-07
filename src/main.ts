@@ -14,14 +14,14 @@ import { DEFAULT_ACCENT, DEFAULT_TAG_COLOURS } from "./defaults";
 import { TimelineLine, readTimeline, writeTimeline } from "./entries/format";
 import { LogOutcome, endRunning, logActivity, logNote } from "./entries/log";
 import { ScopeEdit, appendChecklistItem, appendGreatThing, setChecklistItem } from "./entries/edit";
-import { DEFAULT_DAILY_PATTERN, dailyNotePath } from "./logic/paths";
+import { DEFAULT_DAILY_PATTERN, dailyNotePath, isSafeDailyPattern } from "./logic/paths";
 import { parseTagColours } from "./logic/tags";
-import { countDailyPageBlocks, scopeOf } from "./logic/scope";
+import { NO_PAGE_MESSAGE, countDailyPageBlocks, scopeOf } from "./logic/scope";
 import { StoredQuote, loadDailyQuote } from "./logic/quoteCache";
 import { renderPage } from "./render/page";
 import type { QuoteText } from "./render/quote";
 import { keepFitted } from "./render/fit";
-import { UndoSlot, applyNoteEdit, undoEdit } from "./vault/noteEdit";
+import { PageEditor, reasonOf } from "./vault/editFlow";
 import { NoteCreator } from "./vault/noteCreator";
 import { openBlockEditor, openGreatThingEditor } from "./vault/editor";
 
@@ -55,20 +55,15 @@ function splitLines(content: string): string[] {
   return content.split(/\r?\n/);
 }
 
-/** A readable reason for a failed write, for the Notice. */
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 export default class DailyPagePlugin extends Plugin {
   settings: DailyPageSettings = { ...DEFAULT_SETTINGS };
-  /** The page's lines before and after the last edit, kept for one level of undo. */
-  private readonly undo = new UndoSlot();
   private notes!: NoteCreator<TFile>;
+  private pages!: PageEditor;
 
   async onload(): Promise<void> {
     await this.loadSettings();
     this.notes = new NoteCreator<TFile>(this.app.vault, (entry): entry is TFile => entry instanceof TFile);
+    this.pages = new PageEditor(this.app.vault, () => new Date());
 
     this.addCommand({
       id: "log-activity",
@@ -129,6 +124,8 @@ export default class DailyPagePlugin extends Plugin {
 
   async loadSettings(): Promise<void> {
     this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<DailyPageSettings>) };
+    // A synced settings file could hold a path that leaves the vault. Such a path falls back to the default.
+    if (!isSafeDailyPattern(this.settings.dailyPattern)) this.settings.dailyPattern = DEFAULT_DAILY_PATTERN;
   }
 
   async saveSettings(): Promise<void> {
@@ -147,9 +144,8 @@ export default class DailyPagePlugin extends Plugin {
   }
 
   /**
-   * Applies an edit to a note's page, and records one level of undo. The write itself is shared
-   * with the vault view (applyNoteEdit), so the two cannot drift apart. A failed write is shown to
-   * the reader, and the previous undo record is kept, since the failed edit was not made.
+   * Applies an edit to a note's page, and records one level of undo. A refusal or a failed write
+   * is shown to the reader, and leaves the previous undo record in place.
    */
   private async editFile(path: string, edit: ScopeEdit): Promise<void> {
     const file = this.app.vault.getAbstractFileByPath(path);
@@ -157,45 +153,17 @@ export default class DailyPagePlugin extends Plugin {
       new Notice("The note could not be found.");
       return;
     }
-
-    try {
-      const result = await applyNoteEdit(this.app.vault, file, edit, new Date());
-      if (!result.ok) {
-        new Notice(result.message);
-        return;
-      }
-      // A no-op (a repeat tick, say) changes nothing, so the undo record it would replace stays.
-      if (result.changed) this.undo.remember({ path: file.path, before: result.before, after: result.after });
-    } catch (error) {
-      new Notice(`The note could not be saved: ${reasonOf(error)}`);
-    }
+    const message = await this.pages.edit(file, edit);
+    if (message) new Notice(message);
   }
 
-  /**
-   * Reverts the last edit to the page. It goes through the same atomic write as every other edit,
-   * and it only changes the page's lines, so text outside the page is kept. If the page changed
-   * since that edit, it refuses rather than revert the newer change.
-   */
+  /** Reverts the last edit to the page. See undoPage for when the undo is refused or fails. */
   private async undoLast(): Promise<void> {
-    // Whatever happens next, this edit can only be undone once.
-    const record = this.undo.take();
-    if (!record) {
-      new Notice("Nothing to undo.");
-      return;
-    }
-
-    const file = this.app.vault.getAbstractFileByPath(record.path);
-    if (!(file instanceof TFile)) {
-      new Notice("The note for the last action is gone.");
-      return;
-    }
-
-    try {
-      const result = await applyNoteEdit(this.app.vault, file, undoEdit(record), new Date());
-      new Notice(result.ok ? "Undid the last edit." : result.message);
-    } catch (error) {
-      new Notice(`The undo could not be saved: ${reasonOf(error)}`);
-    }
+    const message = await this.pages.undo((path) => {
+      const file = this.app.vault.getAbstractFileByPath(path);
+      return file instanceof TFile ? file : null;
+    });
+    new Notice(message);
   }
 
   /** Returns today's note, creating it and its folders if they do not exist. */
@@ -241,7 +209,16 @@ export default class DailyPagePlugin extends Plugin {
     const now = new Date();
 
     const file = this.app.vault.getAbstractFileByPath(sourcePath);
-    const content = file instanceof TFile ? await this.app.vault.read(file) : "";
+    let content: string;
+    try {
+      content = file instanceof TFile ? await this.app.vault.read(file) : "";
+    } catch (error) {
+      const message = document.createElement("div");
+      message.className = "daily-page__message";
+      message.textContent = `The note could not be read: ${reasonOf(error)}`;
+      el.replaceChildren(message);
+      return;
+    }
     const lines = splitLines(content);
     if (countDailyPageBlocks(lines) > 1) {
       const message = document.createElement("div");
@@ -251,6 +228,13 @@ export default class DailyPagePlugin extends Plugin {
       return;
     }
     const scope = scopeOf(lines);
+    if (!scope) {
+      const message = document.createElement("div");
+      message.className = "daily-page__message";
+      message.textContent = NO_PAGE_MESSAGE;
+      el.replaceChildren(message);
+      return;
+    }
 
     const blockLines = lines.slice(scope.start, scope.end);
     const draw = (quote: QuoteText | null): void => {
@@ -334,7 +318,12 @@ class DailyPageSettingTab extends PluginSettingTab {
       .setDesc("Tokens: {YYYY} year, {MM} month number, {MMMM} month name, {DD} day.")
       .addText((text) =>
         text.setValue(this.plugin.settings.dailyPattern).onChange(async (value) => {
-          this.plugin.settings.dailyPattern = value.trim() || DEFAULT_DAILY_PATTERN;
+          const pattern = value.trim() || DEFAULT_DAILY_PATTERN;
+          if (!isSafeDailyPattern(pattern)) {
+            new Notice('The daily note path must stay inside the vault: no ".." and no leading slash.');
+            return;
+          }
+          this.plugin.settings.dailyPattern = pattern;
           await this.plugin.saveSettings();
         }),
       );

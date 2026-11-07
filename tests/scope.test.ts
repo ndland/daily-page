@@ -58,3 +58,13 @@ describe("replaceScope", () => {
     expect(next.slice(6)).toEqual(["```", "", "Trailing words"]);
   });
 });
+
+describe("scopeOf, when there is no complete page", () => {
+  it("gives no page for a block that is opened but never closed", () => {
+    expect(scopeOf(["```daily-page", "## Timeline", "- 09:00- Email"])).toBeNull();
+  });
+
+  it("does not treat the reader's own checklist as a page", () => {
+    expect(scopeOf(["# Shopping", "## Checklist", "- [ ] Milk"])).toBeNull();
+  });
+});
