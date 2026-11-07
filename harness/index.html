@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily page harness</title>
+<link rel="stylesheet" href="../styles/daily-page.css">
+<style>
+body { margin: 0; background: #1e1f29; font-family: system-ui, sans-serif; color: #f8f8f2; overflow-x: hidden; }
+/* Stands in for Obsidian's reading view. It has a scroller with padding, and a section with the
+   scroll-past-end padding Obsidian adds. The plugin's stylesheet should remove that padding. */
+.markdown-preview-view { height: 100vh; box-sizing: border-box; padding: 32px; overflow-y: auto; }
+.markdown-preview-section { padding-bottom: 50vh; }
+/* On a phone, Obsidian's reading view has a narrower margin than on the desktop. */
+@media (max-width: 500px) { .markdown-preview-view { padding: 16px; } }
+</style>
+</head>
+<body>
+<div class="markdown-preview-view">
+  <div class="markdown-preview-section">
+    <div id="host" class="block-language-daily-page"></div>
+  </div>
+</div>
+<script src="dist/harness.js"></script>
+</body>
+</html>
