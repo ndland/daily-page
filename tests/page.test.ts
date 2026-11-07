@@ -21,7 +21,8 @@ describe("renderPage", () => {
     const page = root.querySelector(".daily-page");
     expect(page).not.toBeNull();
     expect(page!.querySelector(".daily-page__date")).not.toBeNull();
-    expect(page!.querySelectorAll(".daily-page__checklist li")).toHaveLength(2);
+    expect(page!.querySelectorAll(".daily-page__checklist li")).toHaveLength(1);
+    expect(page!.querySelector(".daily-page__done")).not.toBeNull();
     expect(page!.querySelectorAll(".daily-page__hour-label")).toHaveLength(8);
     expect(page!.querySelector(".daily-page__divider")).not.toBeNull();
     expect(page!.querySelector(".daily-page__calendar")).not.toBeNull();
@@ -56,11 +57,34 @@ describe("renderPage", () => {
   it("shows the quote when one is provided", () => {
     const root = document.createElement("div");
     renderPage(root, [], new Date(2026, 10, 6, 8, 0), {
-      date: "2026-11-06",
       text: "Keep going",
       author: "Someone",
     });
     expect(root.querySelector(".daily-page__quote")?.textContent).toContain("Keep going");
+  });
+
+  it("shows the ZenQuotes attribution with a link whenever a quote is shown", () => {
+    const root = document.createElement("div");
+    renderPage(root, [], new Date(2026, 10, 6, 8, 0), {
+      text: "Keep going",
+      author: "Someone",
+    });
+    const link = root.querySelector<HTMLAnchorElement>(".daily-page__attribution a");
+    expect(link?.textContent).toBe("ZenQuotes API");
+    expect(link?.href).toBe("https://zenquotes.io/");
+  });
+
+  it("shows no attribution when there is no quote", () => {
+    const root = document.createElement("div");
+    renderPage(root, [], new Date(2026, 10, 6, 8, 0), null);
+    expect(root.querySelector(".daily-page__attribution")).toBeNull();
+  });
+
+  it("applies the highlight colour as the accent variable", () => {
+    const root = document.createElement("div");
+    renderPage(root, note, new Date(2026, 10, 6, 11, 0), null, { accent: "#ff79c6" });
+    const page = root.querySelector<HTMLElement>(".daily-page")!;
+    expect(page.style.getPropertyValue("--dp-accent")).toBe("#ff79c6");
   });
 
   it("replaces the previous page when rendered again", () => {

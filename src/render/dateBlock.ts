@@ -1,8 +1,8 @@
-import { WEEKDAY_HEADINGS, dateBlock, monthGrid } from "../logic/calendar";
+import { WEEKDAY_HEADINGS, dateBlock, isoWeek, monthGrid } from "../logic/calendar";
 import { moonPhase } from "../logic/moon";
 
 /** Renders the date block (top left) into `parent`. */
-export function renderDateBlock(parent: HTMLElement, date: Date): void {
+export function renderDateBlock(parent: HTMLElement, date: Date): HTMLElement {
   const fields = dateBlock(date);
   const moon = moonPhase(date);
 
@@ -30,15 +30,30 @@ export function renderDateBlock(parent: HTMLElement, date: Date): void {
   const doy = document.createElement("span");
   doy.className = "daily-page__doy";
   doy.textContent = String(fields.dayOfYear);
+  doy.title = `Day ${fields.dayOfYear} of the year`;
 
-  block.append(month, day, weekday, moonEl, doy);
+  // The moon sits above the day of the year, in the last cell of the date box.
+  const side = document.createElement("div");
+  side.className = "daily-page__date-side";
+  side.append(moonEl, doy);
+
+  block.append(month, day, weekday, side);
   parent.appendChild(block);
+  return block;
 }
 
-/** Renders the mini month calendar (Monday first) with today highlighted. */
+/**
+ * Renders the mini month calendar (Monday first) with today highlighted. The first column is the
+ * ISO week number of each row.
+ */
 export function renderMiniCalendar(parent: HTMLElement, date: Date): void {
   const calendar = document.createElement("div");
   calendar.className = "daily-page__calendar";
+
+  const weekHead = document.createElement("span");
+  weekHead.className = "daily-page__calendar-head";
+  weekHead.textContent = "W";
+  calendar.appendChild(weekHead);
 
   for (const heading of WEEKDAY_HEADINGS) {
     const cell = document.createElement("span");
@@ -47,8 +62,17 @@ export function renderMiniCalendar(parent: HTMLElement, date: Date): void {
     calendar.appendChild(cell);
   }
 
+  const year = date.getFullYear();
+  const month = date.getMonth();
   const today = date.getDate();
-  for (const row of monthGrid(date.getFullYear(), date.getMonth())) {
+  for (const row of monthGrid(year, month)) {
+    // Every day in a Monday-to-Sunday row shares one ISO week, so the row's first day gives it.
+    const anyDay = row.find((day): day is number => day !== null);
+    const week = document.createElement("span");
+    week.className = "daily-page__calendar-week";
+    if (anyDay !== undefined) week.textContent = String(isoWeek(new Date(year, month, anyDay)));
+    calendar.appendChild(week);
+
     for (const day of row) {
       const cell = document.createElement("span");
       cell.className = "daily-page__calendar-cell";

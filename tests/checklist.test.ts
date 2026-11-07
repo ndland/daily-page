@@ -13,15 +13,15 @@ describe("readChecklist", () => {
       "- [X] Stretch",
     ];
     expect(readChecklist(note)).toEqual([
-      { text: "Walk", checked: false },
-      { text: "Water", checked: true },
-      { text: "Stretch", checked: true },
+      { text: "Walk", checked: false, raw: "- [ ] Walk", index: 0 },
+      { text: "Water", checked: true, raw: "- [x] Water", index: 1 },
+      { text: "Stretch", checked: true, raw: "- [X] Stretch", index: 2 },
     ]);
   });
 
-  it("ignores lines that are not checklist tasks", () => {
+  it("ignores lines that are not checklist tasks, and numbers items by their line in the section", () => {
     const note = ["## Checklist", "- Not a task", "- [ ] Real task", "plain text"];
-    expect(readChecklist(note)).toEqual([{ text: "Real task", checked: false }]);
+    expect(readChecklist(note)).toEqual([{ text: "Real task", checked: false, raw: "- [ ] Real task", index: 1 }]);
   });
 
   it("returns no items when the section is missing", () => {

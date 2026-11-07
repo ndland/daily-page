@@ -6,6 +6,25 @@ import { parseTime } from "../src/logic/time";
 const at = (text: string) => parseTime(text) as number;
 const pctOf = (minutes: number) => (minutes / AXIS_MINUTES) * 100;
 
+describe("tag colours on blocks", () => {
+  it("gives a tagged activity its tag colour and leaves untagged ones with none", () => {
+    const blocks = layoutTimeline(
+      readTimeline(["## Timeline", "- 09:00-10:00 Email #work", "- 10:00-11:00 Walk"]),
+      at("12:00"),
+      { work: "#8be9fd" },
+    );
+    expect(blocks[0].colour).toBe("#8be9fd");
+    expect(blocks[1].colour).toBeNull();
+  });
+
+  it("gives side notes no colour", () => {
+    const [block] = layoutTimeline(readTimeline(["## Timeline", "- 09:40 note: idea #work"]), at("10:00"), {
+      work: "#8be9fd",
+    });
+    expect(block.colour).toBeNull();
+  });
+});
+
 describe("axisOffset", () => {
   it("measures from 06:00 and wraps at midnight", () => {
     expect(axisOffset(at("06:00"))).toBe(0);

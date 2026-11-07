@@ -1,48 +1,163 @@
 /*
- * Daily Page: a Hobonichi A6 Techo daily layout in the Dracula palette.
+ * Daily Page: layout rules. Every visual value is a CSS variable, so a vault snippet can
+ * restyle the page without touching this file. See snippets/daily-page-custom.css.
  *
- * Palette roles (Dracula):
- *   background  #282A36   text        #F8F8F2
- *   ink         #6272A4   lines       #44475A
- *   accent      #BD93F9   checked     #8BE9FD
+ * Default palette (Dracula):
+ *   background #282A36   text #F8F8F2   ink #6272A4   lines #44475A
+ *   accent #BD93F9       checked #8BE9FD
  *
- * Ink is used for lines and decoration only. Text always uses the foreground colour,
- * because #6272A4 on #282A36 is too low-contrast for body text.
+ * Ink is used for lines and decoration only. Text uses the foreground colour, because
+ * #6272A4 on #282A36 is too low-contrast for body text.
+ *
+ * The page is sized to the window. Hour rows and blocks are percentages of the page, so
+ * everything scales with the window height and nothing needs a fixed hour height.
  */
 
 .daily-page {
+  /* Colour */
   --dp-bg: #282a36;
   --dp-fg: #f8f8f2;
   --dp-ink: #6272a4;
   --dp-line: #44475a;
   --dp-accent: #bd93f9;
   --dp-check: #8be9fd;
+
+  /* Layout */
   --dp-hours: 21;
-  --dp-hour-height: 3.25rem;
+  /* Fallback height, used only before the plugin measures the window. Once it has run, the
+     page is sized to the space left on screen, so this value rarely matters. */
+  --dp-viewport-offset: 5rem;
+  /* Shared by the top row and the body, so the date box lines up with the divider. */
+  --dp-columns: 2.75rem minmax(0, 2fr) 1px minmax(0, 1fr);
+  --dp-column-gap: 0.5rem;
+
+  /* Size and spacing */
+  --dp-page-gap: 1rem;
+  --dp-page-pad-y: 1rem;
+  --dp-page-pad-x: 1.25rem;
+  --dp-radius: 6px;
+  --dp-font-size: 1rem;
+  --dp-day-size: 2.75rem;
+  --dp-block-font-size: 0.85rem;
+  /* The grid unit: 3 mm on an A6 page 148 mm tall, as in the paper page. The plugin sets it in
+     whole pixels from the page's height (see src/logic/grid.ts). Every text line and spacing in
+     the notes column is a multiple of this unit, so text sits on the grid. */
+  --dp-dot-size: 0.75rem;
+  --dp-note-font-size: 0.8rem;
 
   display: grid;
-  gap: 0.75rem;
-  padding: 1rem;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  box-sizing: border-box;
+  width: 100%;
+  height: calc(100vh - var(--dp-viewport-offset));
+  min-height: 20rem;
+  gap: var(--dp-page-gap);
+  padding: var(--dp-page-pad-y) var(--dp-page-pad-x);
   background: var(--dp-bg);
   color: var(--dp-fg);
+  font-size: var(--dp-font-size);
   border: 1px solid var(--dp-line);
-  border-radius: 6px;
+  border-radius: var(--dp-radius);
 }
 
-/* Top row: date block on the left, checklist on the right. */
+/* Top row: date box over the timeline and divider, checklist over the notes column. */
 .daily-page__top {
   display: grid;
-  grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 14rem);
-  gap: 0.75rem;
-  align-items: start;
+  grid-template-columns: var(--dp-columns);
+  column-gap: var(--dp-column-gap);
+  align-items: stretch;
 }
 
+.daily-page__top-right {
+  grid-column: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* The three things: the header of the notes column, above the timed notes. */
+.daily-page .daily-page__great {
+  box-sizing: border-box;
+  flex: none;
+  /* Vertical padding only, so the list starts at the same left edge as the timed notes. */
+  padding: var(--dp-dot-size) 0;
+  border: none;
+}
+
+/* Text rows are two grid units tall. The plugin moves each row's baseline onto a grid line
+   (src/render/fit.ts), so the spacing does not depend on the font. */
+.daily-page .daily-page__great-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: calc(var(--dp-dot-size) * 2);
+  text-align: center;
+  color: var(--dp-fg);
+  border: none;
+}
+
+/* Dashes, as on the paper page, rather than dots. */
+.daily-page .daily-page__great-list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  line-height: calc(var(--dp-dot-size) * 2);
+}
+
+/* One grid row per thing, so the three sit on consecutive grid rows with no gap between them. */
+.daily-page .daily-page__great-list li {
+  margin: 0;
+  line-height: var(--dp-dot-size);
+}
+
+.daily-page .daily-page__great-list li::before {
+  content: "- ";
+}
+
+.daily-page .daily-page__great-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: calc(var(--dp-dot-size) * 2);
+  font-style: italic;
+  color: var(--dp-fg);
+}
+
+/* Compact, as on the paper page: month, day, and weekday in cells divided by hairlines, with
+   the moon and the day of the year stacked in the last cell. It sits at the top and keeps its
+   own height. */
 .daily-page__date {
+  grid-column: 1 / 4;
+  /* Matches the height of the todo column beside it. */
+  align-self: stretch;
+  justify-self: stretch;
+  display: flex;
+  align-items: stretch;
+  box-sizing: border-box;
+  border: 1px solid var(--dp-ink);
+  line-height: 1.2;
+}
+
+/* The month, day, and weekday cells share the spare width equally, so the box fills the
+   timeline column without one cell sitting mostly empty. Each cell centres its text. */
+.daily-page__date > .daily-page__month,
+.daily-page__date > .daily-page__day,
+.daily-page__date > .daily-page__weekday {
+  flex: 1 1 0;
+  justify-content: center;
+}
+
+.daily-page__date > span,
+.daily-page__date-side {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--dp-ink);
+}
+
+.daily-page__date > span + span,
+.daily-page__date-side {
+  border-left: 1px solid var(--dp-ink);
 }
 
 .daily-page__month,
@@ -53,32 +168,61 @@
 }
 
 .daily-page__day {
-  font-size: 2.25rem;
+  font-size: var(--dp-day-size);
   line-height: 1;
   font-weight: 600;
 }
 
+.daily-page__date-side {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
 .daily-page__moon {
   color: var(--dp-accent);
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
+/* The day of the year, in the same small caps as the month. */
 .daily-page__doy {
-  margin-left: auto;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.daily-page__checklist {
+/* The checklist sits in the top-right corner, in its own box. Two-class selectors beat
+   Obsidian's own list margins and padding on ul and li. */
+.daily-page .daily-page__checklist {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.1rem;
   margin: 0;
-  padding: 0.5rem 0.75rem;
+  padding: 0.35rem 0.75rem;
   list-style: none;
-  border: 1px solid var(--dp-ink);
+  border: none;
 }
 
-.daily-page__checklist li {
+.daily-page .daily-page__checklist li {
   display: flex;
   gap: 0.5rem;
   align-items: center;
-  font-size: 0.9rem;
+  margin: 0;
+  padding: 0;
+  font-size: 0.85rem;
+  line-height: 1.15;
+}
+
+.daily-page .daily-page__checklist li.daily-page__checklist-more {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--dp-fg);
 }
 
 .daily-page__box {
@@ -89,23 +233,74 @@
   flex-shrink: 0;
 }
 
+/* A ticked box shows a check mark in the check colour, drawn with a glyph. */
 .daily-page__box.is-checked {
-  background: var(--dp-check);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-color: var(--dp-check);
+  color: var(--dp-check);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
-/* Body: hour labels, timeline, solid divider, notes column. */
+.daily-page__box.is-checked::after {
+  content: "\2713";
+}
+
+/* Interactive parts: pointer cursor and a visible hover, so they read as clickable. */
+.daily-page .is-clickable {
+  cursor: pointer;
+  transition: filter 0.1s ease;
+}
+
+.daily-page .is-clickable:hover {
+  filter: brightness(1.25);
+}
+
+/* Keyboard users see where focus is. The outline is drawn outside the box, so the layout does not move. */
+.daily-page .is-clickable:focus-visible {
+  outline: 1px solid var(--dp-accent);
+  outline-offset: 2px;
+}
+
+/* The "+N more" row at the foot of the Three things list, when there are more than three. */
+.daily-page .daily-page__great-more {
+  font-style: italic;
+  font-size: 0.75rem;
+  list-style: none;
+}
+
+/* Body: hour labels, timeline, solid divider, notes column. Fills the remaining height. */
 .daily-page__body {
   display: grid;
-  grid-template-columns: 2.75rem minmax(0, 2fr) 1px minmax(0, 1fr);
+  grid-template-columns: var(--dp-columns);
+  grid-template-rows: minmax(0, 1fr);
+  column-gap: var(--dp-column-gap);
   position: relative;
+  min-height: 0;
 }
 
 .daily-page__hours,
-.daily-page__timeline,
+.daily-page__timeline {
+  position: relative;
+  min-height: 0;
+}
+
+/* The notes column: the three things header, then the timed notes in the space below it. */
 .daily-page__notes {
   position: relative;
-  height: calc(var(--dp-hours) * var(--dp-hour-height));
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-dot-size);
+}
+
+.daily-page__notes-area {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .daily-page__hour-label {
@@ -116,12 +311,12 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Graph-paper grid: one line per hour across the timeline. */
+/* Graph-paper grid: one line per hour, sized as a share of the timeline's height. */
 .daily-page__timeline {
   background-image: repeating-linear-gradient(
     to bottom,
     var(--dp-line) 0 1px,
-    transparent 1px var(--dp-hour-height)
+    transparent 1px calc(100% / var(--dp-hours))
   );
 }
 
@@ -130,18 +325,77 @@
 }
 
 .daily-page__notes {
-  padding-left: 0.75rem;
+  padding-left: var(--dp-dot-size);
+  isolation: isolate;
+}
+
+/* The grid is drawn by the plugin (src/render/fit.ts): one dotted line per unit, both ways.
+   It sits under the text. */
+.daily-page__grid {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.daily-page__grid-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dotted var(--dp-line);
+}
+
+.daily-page__grid-col {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px dotted var(--dp-line);
 }
 
 .daily-page__block {
   position: absolute;
   left: 0.25rem;
   right: 0.25rem;
+  display: flex;
+  align-items: center;
   overflow: hidden;
-  padding: 0 0.4rem;
-  font-size: 0.85rem;
-  background: rgba(189, 147, 249, 0.15);
-  border-left: 3px solid var(--dp-accent);
+  padding: 0 0.5rem;
+  font-size: var(--dp-block-font-size);
+  line-height: 1.1;
+  /* --dp-block-accent is set per block when its label has a tag with a colour. */
+  background: color-mix(in srgb, var(--dp-block-accent, var(--dp-accent)) 15%, transparent);
+  border-left: 3px solid var(--dp-block-accent, var(--dp-accent));
+}
+
+/* Short blocks: a strip at part width, with the label beside it, always readable in full. */
+.daily-page__block.is-short {
+  right: 70%;
+  overflow: visible;
+}
+
+.daily-page__block.is-short .daily-page__block-label {
+  position: absolute;
+  left: calc(100% + 0.5rem);
+  top: 50%;
+  transform: translateY(-50%);
+  flex: none;
+  /* One line, so neighbouring short blocks never overlap their labels. The label stops at the
+     timeline's right edge (the block takes 30% of the width, so the label has 233% of the block
+     less the gap), and is cut with an ellipsis when it would run into the notes column. */
+  white-space: nowrap;
+  line-height: 1.1;
+  max-width: calc(233.3% - 0.5rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The label stays on one line and is cut with an ellipsis when the block is too short or narrow. */
+.daily-page .daily-page__block-label {
+  min-width: 0;
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .daily-page__block.is-running {
@@ -152,7 +406,8 @@
   position: absolute;
   left: 0;
   right: 0;
-  font-size: 0.8rem;
+  font-size: var(--dp-note-font-size);
+  line-height: calc(var(--dp-dot-size) * 2);
 }
 
 .daily-page__out-of-axis {
@@ -163,25 +418,84 @@
 .daily-page__footer {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.75rem;
+  gap: 1rem;
   align-items: end;
-  padding-top: 0.5rem;
+  padding-top: 0.75rem;
   border-top: 1px solid var(--dp-line);
   font-size: 0.8rem;
 }
 
-.daily-page__quote {
-  margin: 0;
-  font-style: italic;
+/* The quote block fills its footer space and is centred both ways. */
+.daily-page__footer-left {
+  align-self: stretch;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
+/* Finished todos at the foot of the notes column: a small list that wraps to fit. */
+.daily-page__done {
+  /* Full width, so the line starts at the left edge like the other notes. */
+  align-self: stretch;
+  font-size: 0.75rem;
+  color: var(--dp-fg);
+}
+
+/* Each row is one grid unit, so the rows sit on consecutive grid lines. */
+.daily-page__done-row {
+  line-height: var(--dp-dot-size);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.daily-page__done-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.daily-page__done-item {
+  text-decoration: line-through;
+  color: var(--dp-check);
+}
+
+
+/* The quote is the most prominent text in the footer. The auto top margin takes the spare
+   height above it, so the quote is centred in the space above the attribution. */
+.daily-page__quote {
+  margin: auto 0 0;
+  font-size: 1rem;
+  font-style: italic;
+  line-height: 1.45;
+}
+
+/* The author sits on its own line, left aligned and indented, as a quote's attribution usually is.
+   The quote itself stays centred above it. */
 .daily-page__quote-author {
-  color: var(--dp-ink);
+  display: block;
+  margin-top: 0.25rem;
+  padding-left: 2em;
+  text-align: left;
+  font-size: 0.85rem;
+  font-style: normal;
+  color: var(--dp-fg);
+}
+
+/* Small, in the bottom left of the quote's space. */
+.daily-page__attribution {
+  align-self: flex-start;
+  margin-top: auto;
+  font-size: 0.65rem;
+  text-align: left;
+  color: var(--dp-fg);
 }
 
 .daily-page__calendar {
   display: grid;
-  grid-template-columns: repeat(7, 1.4rem);
+  grid-template-columns: repeat(8, 1.4rem);
   gap: 2px;
   text-align: center;
   font-size: 0.7rem;
@@ -189,11 +503,302 @@
 }
 
 .daily-page__calendar-head {
-  color: var(--dp-ink);
+  color: var(--dp-fg);
+}
+
+/* The week-number column is secondary to the dates, so it is dimmed a little. */
+.daily-page__calendar-week {
+  color: var(--dp-fg);
+  opacity: 0.7;
+}
+
+/* Obsidian pads the last section of a note by about half the window, so you can scroll past
+   the end. The daily page already fills the window, so remove that padding only for the
+   section that holds the page. Other notes are not affected. */
+.markdown-preview-section:has(.daily-page) {
+  padding-bottom: 0 !important;
+  min-height: 0 !important;
 }
 
 .daily-page__calendar-cell.is-today {
   background: var(--dp-accent);
   color: var(--dp-bg);
   border-radius: 50%;
+}
+
+/* Text that must stay on its own line, so it cannot spill into the row below. Long side notes,
+   Three things, and todos are cut with an ellipsis, as blocks are. Hover or click shows the rest. */
+.daily-page__note,
+.daily-page .daily-page__great-list li,
+.daily-page .daily-page__checklist li > span:last-child {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Narrow screens, such as a phone in portrait (about 430px wide). This is the same layout with
+   the same three columns, and notes still sit at their time. Only the sizes change: the hour
+   column, the split between timeline and notes, the padding, and the text. */
+@media (max-width: 500px) {
+  .daily-page {
+    --dp-page-gap: 0.75rem;
+    --dp-page-pad-y: 0.75rem;
+    --dp-page-pad-x: 0.75rem;
+    --dp-columns: 2.25rem minmax(0, 1.25fr) 1px minmax(0, 1fr);
+    --dp-column-gap: 0.4rem;
+    --dp-font-size: 0.9rem;
+    --dp-day-size: 2rem;
+    --dp-block-font-size: 0.7rem;
+    --dp-note-font-size: 0.75rem;
+  }
+
+  .daily-page__date > span,
+  .daily-page__date-side {
+    padding: 0.4rem 0.3rem;
+  }
+
+  .daily-page__month,
+  .daily-page__weekday,
+  .daily-page__doy {
+    font-size: 0.65rem;
+    letter-spacing: 0.04em;
+  }
+
+  .daily-page__hour-label {
+    font-size: 0.6rem;
+  }
+
+  .daily-page .daily-page__great-title {
+    font-size: 0.85rem;
+  }
+
+  .daily-page .daily-page__great-list {
+    font-size: 0.8rem;
+  }
+
+  .daily-page .daily-page__checklist {
+    gap: 0.2rem;
+    padding: 0.35rem 0.25rem;
+  }
+
+  .daily-page .daily-page__checklist li {
+    gap: 0.35rem;
+    font-size: 0.75rem;
+  }
+
+  .daily-page .daily-page__checklist li.daily-page__checklist-more {
+    font-size: 0.7rem;
+  }
+
+  .daily-page__footer {
+    gap: 0.6rem;
+    font-size: 0.7rem;
+  }
+
+  .daily-page__quote {
+    font-size: 0.9rem;
+  }
+
+  .daily-page__attribution {
+    font-size: 0.55rem;
+  }
+
+  .daily-page__calendar {
+    grid-template-columns: repeat(8, 1rem);
+    font-size: 0.6rem;
+  }
+
+  .daily-page__done {
+    font-size: 0.7rem;
+  }
+}
+
+/* On a phone the page is one column that scrolls, so no text is cut short to fit the screen. The
+   timeline takes the full width at a fixed height per hour. Under it come the side notes, in time
+   order, and every one is shown in full. Notes give up their exact place on the axis here, since
+   the axis is too narrow for them. Keep the breakpoint in step with PHONE_QUERY in src/render/fit.ts. */
+@media (max-width: 500px) {
+  .daily-page {
+    --dp-hour-px: 3rem;
+    height: auto;
+    grid-template-rows: auto auto auto;
+  }
+
+  .daily-page__top {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  }
+
+  .daily-page__date {
+    grid-column: 1;
+  }
+
+  .daily-page__top-right {
+    grid-column: 2;
+  }
+
+  /* The notes column is taken apart, so its three parts sit on rows of their own in one column. */
+  .daily-page__body {
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+    row-gap: 0.75rem;
+  }
+
+  .daily-page__notes {
+    display: contents;
+  }
+
+  .daily-page .daily-page__great {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    padding: 0.25rem 0;
+  }
+
+  .daily-page__hours,
+  .daily-page__timeline {
+    grid-row: 2;
+    height: calc(var(--dp-hour-px) * var(--dp-hours));
+  }
+
+  .daily-page__hours {
+    grid-column: 1;
+  }
+
+  .daily-page__timeline {
+    grid-column: 2;
+  }
+
+  .daily-page__divider {
+    display: none;
+  }
+
+  .daily-page__notes-area {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .daily-page__done {
+    grid-column: 1 / -1;
+    grid-row: 4;
+  }
+
+  /* Text wraps rather than being cut: side notes, Three things, todos, and the Done list. */
+  .daily-page .daily-page__note {
+    position: relative;
+    top: auto !important;
+    left: auto;
+    right: auto;
+    padding: 0;
+    font-size: 0.85rem;
+    line-height: 1.35;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .daily-page .daily-page__great-title,
+  .daily-page .daily-page__great-list,
+  .daily-page .daily-page__great-list li,
+  .daily-page .daily-page__great-hint {
+    line-height: 1.35;
+  }
+
+  .daily-page .daily-page__great-list li {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .daily-page .daily-page__checklist li {
+    align-items: flex-start;
+  }
+
+  .daily-page .daily-page__checklist li > span:last-child {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .daily-page__done-row {
+    line-height: 1.35;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .daily-page .daily-page__block-label {
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: clip;
+    line-height: 1.1;
+  }
+
+  /* A short block keeps its strip at the left, and its label has the rest of the row. */
+  .daily-page__block.is-short {
+    right: 80%;
+  }
+
+  .daily-page__block.is-short .daily-page__block-label {
+    max-width: none;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+  }
+}
+
+/* The edit dialog. It sits outside the page, so it uses the palette directly. */
+.daily-page__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.daily-page__dialog {
+  box-sizing: border-box;
+  width: min(420px, 90vw);
+  padding: 1rem 1.25rem;
+  background: #282a36;
+  color: #f8f8f2;
+  border: 1px solid #6272a4;
+  border-radius: 8px;
+}
+
+.daily-page__dialog h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.daily-page__dialog-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.daily-page__dialog-row input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.35rem 0.5rem;
+  background: #1e1f29;
+  color: #f8f8f2;
+  border: 1px solid #44475a;
+  border-radius: 4px;
+}
+
+.daily-page__dialog-save {
+  margin-top: 0.25rem;
+  padding: 0.35rem 1rem;
+  background: #bd93f9;
+  color: #282a36;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
 }
