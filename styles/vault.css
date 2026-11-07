@@ -17,3 +17,23 @@
   color: #f8f8f2;
   font-size: 0.85rem;
 }
+
+/* Daily notes carry the cssclasses value daily-note, so the file name is not shown above the page. */
+.daily-note .inline-title {
+  display: none !important;
+}
+
+/* The properties box is not needed on a daily note: the daily-note class is still applied from the frontmatter. */
+.daily-note .metadata-container {
+  display: none !important;
+}
+
+/* Daily pages do not scroll. The page is sized to the note's visible area (see fit.ts), so anything that
+   would need a scrollbar is cut off instead. Clip, not hidden, so nothing can scroll the note programmatically
+   either, such as moving the caret into view. Only daily notes are affected. */
+.daily-note .cm-scroller,
+.daily-note .markdown-preview-view,
+.daily-note .markdown-source-view,
+.daily-note .view-content {
+  overflow: clip !important;
+}
