@@ -32,10 +32,14 @@ export function renderDateBlock(parent: HTMLElement, date: Date): HTMLElement {
   doy.textContent = String(fields.dayOfYear);
   doy.title = `Day ${fields.dayOfYear} of the year`;
 
-  // The moon sits above the day of the year, in the last cell of the date box.
+  // The last cell of the date box, stacked and centred: the moon, its phase name, then the day of the year.
+  const phase = document.createElement("span");
+  phase.className = "daily-page__moon-phase";
+  phase.textContent = moon.name;
+
   const side = document.createElement("div");
   side.className = "daily-page__date-side";
-  side.append(moonEl, doy);
+  side.append(moonEl, phase, doy);
 
   block.append(month, day, weekday, side);
   parent.appendChild(block);

@@ -38,6 +38,8 @@
   --dp-radius: 6px;
   --dp-font-size: 1rem;
   --dp-day-size: 2.75rem;
+  /* The month and weekday scale with the day number, so they read as one date box. */
+  --dp-label-size: calc(var(--dp-day-size) * 0.4);
   --dp-block-font-size: 0.85rem;
   /* The grid unit: 3 mm on an A6 page 148 mm tall, as in the paper page. The plugin sets it in
      whole pixels from the page's height (see src/logic/grid.ts). Every text line and spacing in
@@ -164,7 +166,7 @@
 .daily-page__weekday {
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-size: 0.8rem;
+  font-size: var(--dp-label-size);
 }
 
 .daily-page__day {
@@ -173,22 +175,38 @@
   font-weight: 600;
 }
 
+/* The moon cell shares the box's width with the other cells, so the moon, the day of the year and
+   the phase name are never squeezed into a sliver. */
+.daily-page__date > .daily-page__date-side {
+  flex: 1 1 0;
+  min-width: 4.5rem;
+}
+
 .daily-page__date-side {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
+  gap: 0.15rem;
+  text-align: center;
 }
 
+/* The moon is a little larger than the month and weekday, so it reads as the cell's picture. */
 .daily-page__moon {
   color: var(--dp-accent);
-  font-size: 1.25rem;
+  font-size: calc(var(--dp-label-size) * 1.3);
   line-height: 1;
+}
+
+/* The phase name, in small type beneath the moon. It wraps to two lines where it must. */
+.daily-page__moon-phase {
+  font-size: 0.7rem;
+  font-style: italic;
+  line-height: 1.2;
 }
 
 /* The day of the year, in the same small caps as the month. */
 .daily-page__doy {
-  font-size: 0.8rem;
+  font-size: var(--dp-label-size);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-variant-numeric: tabular-nums;
@@ -558,10 +576,17 @@
     padding: 0.4rem 0.3rem;
   }
 
+  /* On a phone the four cells share a narrow box, so the moon cell gives up some of its minimum width. */
+  .daily-page__date > .daily-page__date-side {
+    min-width: 3.5rem;
+  }
+
   .daily-page__month,
-  .daily-page__weekday,
+  .daily-page__weekday {
+    letter-spacing: 0.04em;
+  }
+
   .daily-page__doy {
-    font-size: 0.65rem;
     letter-spacing: 0.04em;
   }
 
