@@ -40,7 +40,7 @@ Plugin commands (available in Obsidian's command palette, with hotkeys you choos
 
 ## 3. Project structure
 
-Source lives in its own git repository, outside the vault (`C:\Users\Nick Land\Documents\GitHub\daily-page`). It was moved out of the vault's `99_System/Automation/` folder because the vault's auto-commit sweeps in everything in the working tree, and Obsidian indexes `node_modules` as notes.
+Source lives in its own git repository, outside the vault. It was moved out of the vault's `99_System/Automation/` folder because the vault's auto-commit sweeps in everything in the working tree, and Obsidian indexes `node_modules` as notes.
 
 The vault receives only the built plugin, copied into `.obsidian/plugins/daily-page/` when a release is ready. Development happens in a separate test vault copy.
 
@@ -221,10 +221,10 @@ Note: `#6272A4` on `#282A36` has low contrast. Use it for lines and decoration o
 
 **Provider decision: ZenQuotes** (`https://zenquotes.io/api/today`)
 - Attribution: required on the free tier. The official ZenQuotes documentation (docs.zenquotes.io) asks free users to link back to zenquotes.io. The footer shows "Inspirational quotes provided by ZenQuotes API" with that link, always alongside a quote.
-- Rate limit: the code makes at most one attempt every 15 minutes, which is far below any limit. The figure of 5 requests per 30 seconds is from third-party listings, not the official documentation, so confirm it before release.
-- Display licence: the official documentation's attribution requirement is the only licence condition confirmed. Confirm the full current terms before release.
+- Rate limit: confirmed on docs.zenquotes.io. Requests are restricted by IP to 5 per 30 seconds by default. The code makes at most one attempt every 15 minutes, far below that limit.
+- Display licence: the official documentation's attribution requirement is the only licence condition published. The docs contain no terms on commercial or redistributed use, and zenquotes.io/terms does not exist. This is an open risk for distributing the plugin beyond personal use.
 - Reliability: a failed or throttled attempt falls back to the most recent cached quote. With no cache, no quote is shown and no error appears.
-- Status: selected in principle, pending the two confirmations above before release.
+- Status: selected. The rate limit and attribution are confirmed. Redistribution terms are open (section 8).
 
 **Acceptance**
 - Two renders on the same day trigger one fetch (checked with a mocked fetch in a unit test).
@@ -234,7 +234,7 @@ Note: `#6272A4` on `#282A36` has low contrast. Use it for lines and decoration o
 
 ## 8. Open questions (not blocking)
 
-1. **Quote provider:** ZenQuotes, selected in section F. Two points need confirming before release: the rate limit and the full display licence.
+1. **Quote provider:** ZenQuotes, selected in section F. The rate limit and attribution are confirmed. Redistribution terms are not published; confirm them before the plugin is shared beyond personal use.
 2. **Running activity past midnight:** the default is that it stays running in its own day's note and is not closed by the next day's entries. Confirm, or pick another rule.
 3. **Week start:** Monday, assumed from the reference photo. Confirm.
 4. **Hotkey defaults:** choose when building module B.
