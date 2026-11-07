@@ -11,7 +11,7 @@ npm install
 npm run release
 ```
 
-The build runs the test suite first, so a failing test stops the release. The package is written to `release/daily-page/`: `main.js`, `manifest.json`, `styles.css` and `versions.json`. The release script refuses any file that mentions the harness. Copy them into `<your vault>/.obsidian/plugins/daily-page/`, then turn the plugin on under Settings, Community plugins. On iPhone, put the same folder in the vault through your sync method, and reload Obsidian.
+The build runs the test suite first, so a failing test stops the release. The package is written to `release/daily-page/`: `main.js`, `manifest.json` and `styles.css`. The release script refuses any file that mentions the harness. Copy them into `<your vault>/.obsidian/plugins/daily-page/`, then turn the plugin on under Settings, Community plugins. On iPhone, put the same folder in the vault through your sync method, and reload Obsidian.
 
 ## Update
 
