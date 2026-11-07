@@ -21,6 +21,21 @@ body { margin: 0; background: #1e1f29; font-family: system-ui, sans-serif; color
     <div id="host" class="block-language-daily-page"></div>
   </div>
 </div>
+<script>
+/* ?editor=1 imitates live preview: the note sits in an editor scroller, with some lines above and below the page. */
+if (new URLSearchParams(location.search).get("editor") === "1") {
+  const view = document.querySelector(".markdown-preview-view");
+  view.className = "cm-scroller";
+  const above = document.createElement("div");
+  above.textContent = "dataviewjs preamble";
+  above.style.height = "120px";
+  view.prepend(above);
+  const below = document.createElement("div");
+  below.textContent = "raw block lines";
+  below.style.height = "120px";
+  view.appendChild(below);
+}
+</script>
 <script src="dist/harness.js"></script>
 </body>
 </html>

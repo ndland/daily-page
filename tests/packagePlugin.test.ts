@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -32,6 +32,23 @@ const GOOD: Record<string, string> = {
   "harness/harness.ts": "export {};",
   "tests/a.test.ts": "export {};",
 };
+
+/** Every .ts file under a folder, as paths relative to the project root. */
+function tsFiles(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) return tsFiles(full);
+    return name.endsWith(".ts") ? [full] : [];
+  });
+}
+
+describe("the shipped source", () => {
+  it("does not import the harness from any file in src, so the harness cannot end up in the plugin", () => {
+    const importsHarness = /(?:from|import\(|require\()\s*["'][^"']*harness/;
+    const offenders = tsFiles(resolve("src")).filter((file) => importsHarness.test(readFileSync(file, "utf8")));
+    expect(offenders).toEqual([]);
+  });
+});
 
 describe("scripts/package-plugin.mjs", () => {
   it("packages exactly the three plugin files, and nothing from the sources or development folders", () => {

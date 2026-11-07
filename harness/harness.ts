@@ -30,6 +30,9 @@ const sampleNote = [
   "- Call Mum",
 ];
 
+/** A new note, as the template creates it: the three sections with nothing in them. */
+const emptyNote = ["## Timeline", "", "## Checklist", "", "## Three things"];
+
 const quote: StoredQuote = {
   date: "2026-11-06",
   text: "Your mind is infinite, it's your doubts that are limiting.",
@@ -39,7 +42,9 @@ const quote: StoredQuote = {
 const host = document.getElementById("host");
 if (host) {
   // A fixed moment, so screenshots and measurements are repeatable.
-  renderPage(host, sampleNote, new Date(2026, 10, 6, 14, 30), quote, {
+  // ?note=empty shows a new note with no entries, as the template creates it.
+  const shown = new URLSearchParams(location.search).get("note") === "empty" ? emptyNote : sampleNote;
+  renderPage(host, shown, new Date(2026, 10, 6, 14, 30), quote, {
     accent: "#bd93f9",
     tagColours: { work: "#8be9fd", deep: "#ff79c6" },
   });
