@@ -11,7 +11,8 @@
     "harness": "esbuild harness/harness.ts --bundle --format=iife --target=es2020 --outfile=harness/dist/harness.js",
     "vault": "node scripts/build-vault.mjs",
     "release": "npm run build && node scripts/package-plugin.mjs",
-    "audit": "npm audit --audit-level=high"
+    "audit": "npm audit --audit-level=high",
+    "install:vault": "node scripts/install-vault.mjs"
   },
   "keywords": [],
   "author": "Nick Land",
