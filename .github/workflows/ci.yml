@@ -1,0 +1,55 @@
+# The same checks a release makes, run on every pull request and every push to main, so a problem shows up
+# before a tag does. It can only read the repository and publishes nothing.
+#
+# Rules this file follows (SPEC-release.md, sections 6 and 12): actions pinned to a full commit SHA (the same
+# pins as release.yml), a read-only token, and no expression written into a script.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      # npm ci would otherwise install the git hooks, which CI does not need.
+      HUSKY: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The full history, so the commits of a pull request can be checked.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build, test and package
+        run: npm run release
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Check the version files agree
+        run: node scripts/check-versions.mjs
+
+      - name: Check the commit messages of the pull request
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: npx commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
+
+      - name: Check the commit message of the push
+        if: github.event_name == 'push'
+        run: npx commitlint --last --verbose

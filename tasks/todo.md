@@ -90,7 +90,7 @@ Every task also meets the standing bar: `npm test` and `npx tsc --noEmit` pass, 
   - Files: `.nvmrc`, `.github/workflows/release.yml`, `scripts/stamp-manifest.mjs`, `tests/workflows.test.ts`, `package.json` (a YAML parser as a dev dependency only if none is already installed; ask first).
   - Depends on: T3, T4, T7.
 
-- [ ] **T10: CI workflow** (S)
+- [x] **T10: CI workflow** (S)
   - Acceptance: `ci.yml` runs on pull requests and on pushes to `main`: checkout with `fetch-depth: 0`, setup-node from `.nvmrc`, `npm ci` with `HUSKY=0`, `npm run release`, `npm audit`, `check-versions` with no tag, and commitlint on the pull request's commit range (`--from` base SHA `--to` head SHA) or `--last` on a push. `permissions: contents: read`; actions pinned.
   - Verify: the workflow test from T9 extended to `ci.yml`; then, after the branch is pushed (ask first), the run on the pull request is green on Node 26.
   - Files: `.github/workflows/ci.yml`, `tests/workflows.test.ts`.

@@ -94,3 +94,52 @@ describe("release workflow", () => {
     expect(workflow).toMatch(/GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/);
   });
 });
+
+describe("ci workflow", () => {
+  const workflow = read(".github/workflows/ci.yml");
+
+  it("runs on pull requests and on pushes to main, and on no tag", () => {
+    expect(workflow).toMatch(/^on:\n  pull_request:\n  push:\n    branches:\n      - main$/m);
+    expect(workflow).not.toMatch(/^\s+tags:/m);
+  });
+
+  it("can only read: no write permission anywhere, and no publishing", () => {
+    expect(workflow).toMatch(/^permissions:\n  contents: read$/m);
+    expect(workflow).not.toMatch(/:\s*write\s*$/m);
+    expect(workflow).not.toContain("gh release");
+    expect(workflow).not.toContain("secrets.");
+  });
+
+  it("pins every action to a full commit SHA, with the same pins as the release workflow", () => {
+    const pins = (text: string) => [...text.matchAll(/^\s*- uses: (\S+)/gm)].map((m) => m[1]).sort();
+    expect(pins(workflow).length).toBeGreaterThanOrEqual(2);
+    for (const reference of pins(workflow)) expect(reference, reference).toMatch(/^[\w.-]+\/[\w.-]+@[0-9a-f]{40}$/);
+    expect(pins(workflow)).toEqual(pins(read(".github/workflows/release.yml")));
+  });
+
+  it("writes no expression into a script, passing values through the environment", () => {
+    for (const block of runBlocks(workflow)) expect(block).not.toContain("${{");
+    expect(workflow).toMatch(/BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
+    expect(workflow).toMatch(/HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
+  });
+
+  it("checks out the full history, installs without hooks, and uses the pinned Node version", () => {
+    expect(workflow).toContain("fetch-depth: 0");
+    expect(workflow).toMatch(/HUSKY: "0"/);
+    expect(workflow).toContain("node-version-file: .nvmrc");
+    expect(workflow).toContain("npm ci");
+  });
+
+  it("runs the same gates as a release: build and tests, audit, version files and commit messages", () => {
+    expect(workflow).toContain("npm run release");
+    expect(workflow).toContain("npm audit --audit-level=high");
+    expect(workflow).toContain("node scripts/check-versions.mjs");
+    expect(workflow).toContain('commitlint --from "$BASE_SHA" --to "$HEAD_SHA"');
+    expect(workflow).toContain("commitlint --last");
+  });
+
+  it("lints a range on a pull request and the last commit on a push", () => {
+    expect(workflow).toMatch(/if: github\.event_name == 'pull_request'[\s\S]*commitlint --from/);
+    expect(workflow).toMatch(/if: github\.event_name == 'push'[\s\S]*commitlint --last/);
+  });
+});
