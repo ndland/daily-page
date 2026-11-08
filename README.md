@@ -73,7 +73,7 @@ The harness shows the page in a browser, at a phone or desktop width. It is a de
 
 ## Commits and changelog
 
-Commits follow [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): subject`, such as `fix(plan): refuse a block over 12 hours`. The scope is required and must be one of the areas listed in `commitlint.config.mjs`. A commit message hook (husky and commitlint) rejects anything else, and it is installed by `npm install`.
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): subject`, such as `fix(plan): refuse a block over 12 hours`. The scope is required and must be one of the areas listed in `commitlint.config.mjs`. A commit message hook (husky and commitlint) rejects anything else, and it is installed by `npm install`. Messages also carry no trailers: lines such as `Co-Authored-By`, `Signed-off-by` or "Generated with" are rejected.
 
 ```bash
 npm run commit     # stage your changes first, then pick the type and scope from a list
