@@ -23,6 +23,8 @@ import { DEFAULT_NEW_NOTE_CONTENT, resolveNewNote } from "./logic/newNote";
 import { DEFAULT_SETTINGS, DailyPageSettings, normaliseSettings } from "./logic/settings";
 import { drawNoteQuote } from "./logic/noteQuote";
 import { parseTagColours } from "./logic/tags";
+import { DEFAULT_TAG_COLOURS } from "./defaults";
+import { REFRESH_MS, hasRunningActivity } from "./logic/liveRefresh";
 import { minutesOfDay, nextHalfHour } from "./logic/time";
 import { MULTIPLE_BLOCKS, NO_PAGE_MESSAGE, countDailyPageBlocks, scopeOf } from "./logic/scope";
 import { QuoteStore, pruneQuotes } from "./logic/quoteCache";
@@ -57,6 +59,7 @@ export default class DailyPagePlugin extends Plugin {
   /** The blocks drawn in open notes, so each can be redrawn as its note is typed in. */
   private readonly liveBlocks = new Map<HTMLElement, { path: string; paint: (text: string) => void }>();
   private livePending: { editor: Editor; path: string } | null = null;
+  private refreshing = false;
   private liveFrame: number | null = null;
 
   async onload(): Promise<void> {
@@ -64,6 +67,8 @@ export default class DailyPagePlugin extends Plugin {
     this.notes = new NoteCreator<TFile>(this.app.vault, (entry): entry is TFile => entry instanceof TFile);
     this.pages = new PageEditor(this.app.vault, () => new Date(), () => this.isReadOnly());
     this.registerEvent(this.app.workspace.on("editor-change", (editor, info) => this.followEditor(editor, info)));
+    // A running activity's block grows with the clock, so a page that has one is drawn again each minute.
+    this.registerInterval(window.setInterval(() => void this.refreshRunning(), REFRESH_MS));
 
     this.addCommand({
       id: "log-activity",
@@ -98,7 +103,9 @@ export default class DailyPagePlugin extends Plugin {
       hotkeys: [{ modifiers: ["Alt", "Shift"], key: "P" }],
       callback: () =>
         // Suggests the next half hour, so a plan is a block ahead by default.
-        openPlanDialog(nextHalfHour(minutesOfDay(new Date())), (edit) => void this.planToday(edit)),
+        this.whenWritable(() =>
+          openPlanDialog(nextHalfHour(minutesOfDay(new Date())), (edit) => void this.planToday(edit)),
+        ),
     });
 
     this.addCommand({
@@ -199,6 +206,7 @@ export default class DailyPagePlugin extends Plugin {
       return;
     }
     try {
+      await this.saveOpenEditor(path);
       const content = await this.app.vault.read(file);
       if (countDailyPageBlocks(splitLines(content)) > 1) {
         new Notice(MULTIPLE_BLOCKS);
@@ -363,6 +371,54 @@ export default class DailyPagePlugin extends Plugin {
     return null;
   }
 
+  /** Draws again every shown page that has a running activity, so its block reaches the current minute. */
+  private async refreshRunning(): Promise<void> {
+    // One pass at a time, so a slow read cannot overlap the next minute's pass.
+    if (document.hidden || this.refreshing) return;
+    this.refreshing = true;
+    try {
+      for (const [el, block] of [...this.liveBlocks]) {
+        if (!el.isConnected) {
+          this.liveBlocks.delete(el);
+          continue;
+        }
+        // A page being clicked or typed in is left alone, so a redraw cannot swallow the gesture.
+        if (el.contains(document.activeElement)) continue;
+        try {
+          const file = this.app.vault.getAbstractFileByPath(block.path);
+          const text = this.openEditorText(block.path) ?? (file instanceof TFile ? await this.app.vault.cachedRead(file) : "");
+          // The editor's text is read again just before drawing, so a draw never shows older text than the editor holds.
+          if (hasRunningActivity(text)) block.paint(this.openEditorText(block.path) ?? text);
+        } catch {
+          // A page that cannot be read is left as drawn. The next minute tries again.
+        }
+      }
+    } finally {
+      this.refreshing = false;
+    }
+  }
+
+  /**
+   * Saves the note if it is open in an editor. The page draws from the editor's text but edits are made to the
+   * saved note, and Obsidian saves only after a pause, so without this a click soon after typing would find the
+   * saved note older than the page and be refused as stale.
+   */
+  private async saveOpenEditor(path: string): Promise<void> {
+    for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
+      const view = leaf.view;
+      if (view instanceof MarkdownView && view.file?.path === path) await view.save();
+    }
+  }
+
+  /** Runs an action that opens an editing dialog, unless this device is read-only. */
+  private whenWritable(action: () => void): void {
+    if (this.isReadOnly()) {
+      new Notice(READ_ONLY_MESSAGE);
+      return;
+    }
+    action();
+  }
+
   /** Draws one block from a note's text. Used when the block first draws, and again as the note is typed in. */
   private paintBlock(
     el: HTMLElement,
@@ -390,10 +446,16 @@ export default class DailyPagePlugin extends Plugin {
         onToggle: (item, checked) => {
           void this.editFile(sourcePath, (scope) => setChecklistItem(scope, item, checked));
         },
-        onEdit: (block) => openBlockEditor(block, (edit) => void this.editFile(sourcePath, edit)),
-        onPlan: (minute) => openPlanDialog(minute, (edit) => void this.editFile(sourcePath, edit)),
+        onEdit: (block, isToday) =>
+          this.whenWritable(() =>
+            openBlockEditor(block, (edit) => void this.editFile(sourcePath, edit), { canStart: isToday }),
+          ),
+        // On a read-only device an empty tap does nothing, so scrolling cannot open a form that cannot save.
+        onPlan: this.isReadOnly()
+          ? undefined
+          : (minute) => this.whenWritable(() => openPlanDialog(minute, (edit) => void this.editFile(sourcePath, edit))),
         onEditGreatThing: (item) =>
-          openGreatThingEditor(item, (edit) => void this.editFile(sourcePath, edit)),
+          this.whenWritable(() => openGreatThingEditor(item, (edit) => void this.editFile(sourcePath, edit))),
       },
     });
     // Size the page to the window once it is on screen, and again on every resize.
@@ -528,6 +590,13 @@ class DailyPageSettingTab extends PluginSettingTab {
         area.setValue(this.plugin.settings.tagColours).onChange(async (value) => {
           this.plugin.settings.tagColours = value;
           await this.plugin.saveSettings();
+        }),
+      )
+      .addButton((button) =>
+        button.setButtonText("Reset to defaults").onClick(async () => {
+          this.plugin.settings.tagColours = DEFAULT_TAG_COLOURS;
+          await this.plugin.saveSettings();
+          this.display();
         }),
       );
   }
