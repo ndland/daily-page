@@ -47,7 +47,7 @@ Every task also meets the standing bar: `npm test` and `npx tsc --noEmit` pass, 
 
 ## Phase 2: `release:prepare`
 
-- [ ] **T5: Choose the version, and dry run** (M)
+- [x] **T5: Choose the version, and dry run** (M)
   - Acceptance: `npm run release:prepare -- --dry-run` reads the commit subjects since the last stable tag (`git log <tag>..HEAD`), prints the next version, why (counts of `feat`, `fix`, breaking), and the files it would change; an explicit version argument overrides; with nothing releasable it exits 1 and says why; it changes nothing.
   - Verify: `npx vitest run tests/releasePrepare.test.ts` using a temporary git repository with scripted commits and tags (feat gives minor, fix gives patch, breaking gives minor, docs-only refuses, override wins, no tags yet).
   - Files: `scripts/release-prepare.mjs`, `scripts/lib/release.mjs`, `scripts/lib/release.d.mts`, `tests/releasePrepare.test.ts`, `package.json`.
