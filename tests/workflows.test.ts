@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 
 // The workflows are checked as text, because the repository has no YAML parser and adding one only for this
 // would be a new dependency. Each rule below traces to the spec (SPEC-release.md, sections 6 and 12).
-const read = (path: string) => readFileSync(path, "utf8");
+// Git on Windows checks files out with CRLF line endings when core.autocrlf is on, and the rules below match "\n".
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n");
 
 /** The text of every `run:` step, so shell scripts can be checked on their own. */
 function runBlocks(workflow: string): string[] {
