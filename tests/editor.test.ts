@@ -42,7 +42,7 @@ describe("openBlockEditor for an activity", () => {
 });
 
 describe("openBlockEditor, starting a planned block", () => {
-  const planned: PositionedBlock = { ...runningDraft, timeText: "14:00-15:00", running: false, raw: "- 14:00-15:00 Review" };
+  const planned: PositionedBlock = { ...runningDraft, label: "Review", timeText: "14:00-15:00", running: false, raw: "- 14:00-15:00 Review" };
 
   it("offers Start now for a closed block, which starts it at the current minute", () => {
     const save = vi.fn<(edit: ScopeEdit) => void>();
@@ -70,5 +70,24 @@ describe("openPlanDialog", () => {
     document.querySelector<HTMLButtonElement>(".daily-page__dialog-save")!.click();
     const outcome = save.mock.calls[0][0](["## Timeline"], 0);
     expect(outcome).toEqual({ ok: true, lines: ["## Timeline", "- 14:00-14:30 Review #meeting"] });
+  });
+});
+
+describe("openBlockEditor, Start now details", () => {
+  const closed: PositionedBlock = { ...runningDraft, label: "Review", timeText: "14:00-15:00", running: false, raw: "- 14:00-15:00 Review", index: 0 };
+
+  it("starts with the label as typed in the dialog", () => {
+    const save = vi.fn<(edit: ScopeEdit) => void>();
+    openBlockEditor(closed, save);
+    document.querySelector<HTMLInputElement>(".daily-page__dialog input")!.value = "Review photos";
+    document.querySelector<HTMLButtonElement>(".daily-page__dialog-extra")!.click();
+
+    const outcome = save.mock.calls[0][0](["## Timeline", "- 14:00-15:00 Review"], 13 * 60);
+    expect(outcome).toEqual({ ok: true, lines: ["## Timeline", "- 13:00- Review photos"] });
+  });
+
+  it("offers no Start now on a past day's note", () => {
+    openBlockEditor(closed, vi.fn(), { canStart: false });
+    expect(document.querySelector(".daily-page__dialog-extra")).toBeNull();
   });
 });

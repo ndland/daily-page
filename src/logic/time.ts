@@ -31,7 +31,10 @@ function pad2(value: number): string {
   return value.toString().padStart(2, "0");
 }
 
-/** The next half hour after `minute` (10:12 gives 10:30, 10:30 gives 11:00), wrapping at midnight. */
+/**
+ * The next half hour after `minute` (10:12 gives 10:30, 10:30 gives 11:00). It stops at 23:30, so a plan
+ * suggested late in the evening stays at the end of today and does not jump to the top of the page.
+ */
 export function nextHalfHour(minute: number): number {
-  return ((Math.floor(minute / 30) + 1) * 30) % MINUTES_PER_DAY;
+  return Math.min((Math.floor(minute / 30) + 1) * 30, MINUTES_PER_DAY - 30);
 }

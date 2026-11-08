@@ -37,6 +37,7 @@ describe("clicks on the page", () => {
 
     expect(onEdit).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "activity", raw: "- 09:00-10:15 Email #work", index: 0 }),
+      expect.any(Boolean),
     );
   });
 
@@ -49,6 +50,7 @@ describe("clicks on the page", () => {
 
     expect(onEdit).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "note", raw: "- 09:40 note: idea for the proposal", index: 1 }),
+      expect.any(Boolean),
     );
   });
 

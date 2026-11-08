@@ -27,6 +27,10 @@ declare const app: any;
 
 const PLUGIN_ID = "daily-page";
 
+/** The plugin's saved settings, or undefined when the plugin is off. */
+function pluginSettings(): Record<string, any> | undefined {
+  return app.plugins?.plugins?.[PLUGIN_ID]?.settings;
+}
 
 /**
  * The plugin's editor when the plugin is enabled, so an undo in the plugin sees the edits made in the
@@ -64,13 +68,13 @@ async function editNote(path: string, edit: ScopeEdit): Promise<void> {
 
 /** The quote the plugin kept for the given day, or null when the plugin is off or kept none for that day. */
 function cachedQuote(day: Date): QuoteText | null {
-  const quote = storedQuoteFromSettings(app.plugins?.plugins?.[PLUGIN_ID]?.settings?.quotes, day);
+  const quote = storedQuoteFromSettings(pluginSettings()?.quotes, day);
   return quote ? { text: quote.text, author: quote.author } : null;
 }
 
 /** The daily-note pattern the plugin uses, so the view reads the note's date the same way. */
 function dailyPattern(): string {
-  return app.plugins?.plugins?.[PLUGIN_ID]?.settings?.dailyPattern ?? DEFAULT_DAILY_PATTERN;
+  return pluginSettings()?.dailyPattern ?? DEFAULT_DAILY_PATTERN;
 }
 
 /**
@@ -113,13 +117,14 @@ async function draw(liveText?: string): Promise<void> {
   const noteDay = noteDateOf(path, dailyPattern(), createdMsOf(dv.current().file));
   renderPage(dv.container, lines.slice(scope.start, scope.end), new Date(), cachedQuote(noteDay), {
     date: noteDay,
-    accent: VIEW_SETTINGS.accent,
-    tagColours: parseTagColours(VIEW_SETTINGS.tagColours),
+    // The plugin's own settings when it is on, so a colour changed there shows here too.
+    accent: pluginSettings()?.accentColor ?? VIEW_SETTINGS.accent,
+    tagColours: parseTagColours(pluginSettings()?.tagColours ?? VIEW_SETTINGS.tagColours),
     handlers: {
       onToggle: (item, checked) => {
         void editNote(path, (scope) => setChecklistItem(scope, item, checked));
       },
-      onEdit: (block) => openBlockEditor(block, (edit) => void editNote(path, edit)),
+      onEdit: (block, isToday) => openBlockEditor(block, (edit) => void editNote(path, edit), { canStart: isToday }),
       onPlan: (minute) => openPlanDialog(minute, (edit) => void editNote(path, edit)),
       onEditGreatThing: (item) => openGreatThingEditor(item, (edit) => void editNote(path, edit)),
     },

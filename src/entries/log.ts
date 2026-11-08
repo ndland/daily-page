@@ -1,5 +1,5 @@
 import { ActivityEntry, TimelineLine, formatEntry, readTimeline, toTimelineLine, writeTimeline } from "./format";
-import { EditOutcome, LineRef, STALE, SPAN_RULE, TimelineEdit, isValidSpan } from "./edit";
+import { EditOutcome, LineRef, STALE, SPAN_RULE, TimelineEdit, cleanText, isValidSpan } from "./edit";
 import { parseTime } from "../logic/time";
 
 export type LogOutcome =
@@ -10,13 +10,9 @@ function succeed(timeline: TimelineLine[]): LogOutcome {
   return { ok: true, timeline };
 }
 
-function fail(message: string): LogOutcome {
+/** A refusal. Its shape is shared by LogOutcome and EditOutcome, so either can return it. */
+function fail(message: string): { ok: false; message: string } {
   return { ok: false, message };
-}
-
-/** Collapses whitespace so user input always stays on one line. */
-function cleanText(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
 }
 
 function runningIndex(timeline: TimelineLine[]): number {
@@ -103,36 +99,40 @@ export function endRunning(timeline: TimelineLine[], now: number): LogOutcome {
  */
 export function planBlock(scope: string[], edit: TimelineEdit): EditOutcome {
   const label = cleanText(edit.label);
-  if (!label) return { ok: false, message: "Enter a label for the block." };
+  if (!label) return fail("Enter a label for the block.");
 
   const start = parseTime(edit.start.trim());
-  if (start === null) return { ok: false, message: "Start time must be HH:MM." };
+  if (start === null) return fail("Start time must be HH:MM.");
   const end = parseTime(edit.end.trim());
-  if (end === null) return { ok: false, message: "End time must be HH:MM." };
-  if (!isValidSpan(start, end)) return { ok: false, message: SPAN_RULE };
+  if (end === null) return fail("End time must be HH:MM.");
+  if (!isValidSpan(start, end)) return fail(SPAN_RULE);
 
   const line = toTimelineLine(formatEntry({ kind: "activity", start, end, label }));
   return { ok: true, lines: writeTimeline(scope, appendEntry(readTimeline(scope), line)) };
 }
 
 /**
- * Starts a planned (closed) block now: it becomes the running activity, starting at `now`. Any
- * other running activity ends at `now` first, so only one runs at a time.
+ * Starts a planned (closed) block now: it becomes the running activity, starting at `now`, with `label` when one
+ * is given. Any other running activity ends at `now` first, so only one runs at a time.
  */
-export function startPlannedBlock(scope: string[], expected: LineRef, now: number): EditOutcome {
+export function startPlannedBlock(scope: string[], expected: LineRef, now: number, label?: string): EditOutcome {
   const timeline = readTimeline(scope);
   const current = timeline[expected.index];
-  if (current?.raw !== expected.raw || current.entry?.kind !== "activity") return { ok: false, message: STALE };
-  if (current.entry.end === null) return { ok: false, message: "That activity is already running." };
+  if (current?.raw !== expected.raw || current.entry?.kind !== "activity") return fail(STALE);
+  if (current.entry.end === null) return fail("That activity is already running.");
 
   let next = timeline;
   const running = runningIndex(timeline);
   if (running !== -1) {
     const problem = endProblem(timeline[running].entry as ActivityEntry, now);
-    if (problem) return { ok: false, message: problem };
+    if (problem) return fail(problem);
     next = endAt(timeline, running, now);
   }
 
-  const started = toTimelineLine(formatEntry({ ...current.entry, start: now, end: null }));
+  // A label the reader changed in the dialog before pressing Start now is kept. A blank one keeps the old label.
+  const newLabel = label === undefined ? "" : cleanText(label);
+  const started = toTimelineLine(
+    formatEntry({ ...current.entry, start: now, end: null, label: newLabel || current.entry.label }),
+  );
   return { ok: true, lines: writeTimeline(scope, next.map((line, i) => (i === expected.index ? started : line))) };
 }

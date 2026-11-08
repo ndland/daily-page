@@ -5,11 +5,23 @@ import type { GreatThing } from "../render/greatThings";
 import type { PositionedBlock } from "../render/timeline";
 import { openFieldsDialog } from "./dialog";
 
+export interface BlockEditorOptions {
+  /**
+   * Whether a block that has ended can be started now. It starts at the clock's minute, which is only right on
+   * today's note, so a past day's note turns it off. Defaults to true.
+   */
+  canStart?: boolean;
+}
+
 /**
  * Opens the editor for a clicked block: an activity, or a side note. When the reader saves,
  * `save` receives the change as a scope edit, to apply to the note.
  */
-export function openBlockEditor(block: PositionedBlock, save: (edit: ScopeEdit) => void): void {
+export function openBlockEditor(
+  block: PositionedBlock,
+  save: (edit: ScopeEdit) => void,
+  options: BlockEditorOptions = {},
+): void {
   const ref: LineRef = { raw: block.raw, index: block.index };
 
   if (block.kind === "note") {
@@ -31,10 +43,16 @@ export function openBlockEditor(block: PositionedBlock, save: (edit: ScopeEdit) 
     ([label, startText, endText]) => {
       save((scope, minute) => editTimelineEntry(scope, ref, { label, start: startText, end: endText }, minute));
     },
-    // A block that has ended can be started again now. A running one is already started.
-    block.running
+    // A block that has ended can be started again now. A running one is already started. The label typed in the
+    // dialog is kept, so a change made just before pressing Start now is not lost.
+    block.running || options.canStart === false
       ? []
-      : [{ label: "Start now", run: () => save((scope, minute) => startPlannedBlock(scope, ref, minute)) }],
+      : [
+          {
+            label: "Start now",
+            run: ([label]) => save((scope, minute) => startPlannedBlock(scope, ref, minute, label)),
+          },
+        ],
   );
 }
 

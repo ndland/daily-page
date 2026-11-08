@@ -204,3 +204,24 @@ describe("editTimelineEntry, running spans and kinds", () => {
     expect(result).toEqual({ ok: false, message: expect.stringContaining("changed in the note") });
   });
 });
+
+describe("editTimelineEntry, running start boundaries", () => {
+  const timeline = ["## Timeline", "- 09:00- Email"];
+  const EMAIL_RUNNING = { raw: "- 09:00- Email", index: 0 };
+
+  it("refuses a running start one minute in the future", () => {
+    const result = editEntry(timeline, EMAIL_RUNNING, { label: "Email", start: "10:31", end: "" }, NOON_ISH);
+    expect(result.ok).toBe(false);
+  });
+
+  it("accepts a running start exactly 12 hours ago, and refuses one a minute older", () => {
+    expect(editEntry(timeline, EMAIL_RUNNING, { label: "Email", start: "10:00", end: "" }, 22 * 60).ok).toBe(true);
+    expect(editEntry(timeline, EMAIL_RUNNING, { label: "Email", start: "09:59", end: "" }, 22 * 60).ok).toBe(false);
+  });
+
+  it("refuses to make a second activity run, even starting this minute", () => {
+    const two = ["## Timeline", "- 09:00-10:00 Email", "- 10:00- Draft"];
+    const result = editEntry(two, { raw: "- 09:00-10:00 Email", index: 0 }, { label: "Email", start: "10:30", end: "" }, NOON_ISH);
+    expect(result).toEqual({ ok: false, message: expect.stringContaining("Only one activity") });
+  });
+});

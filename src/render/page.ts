@@ -2,10 +2,14 @@ import { readTimeline } from "../entries/format";
 import { minutesOfDay } from "../logic/time";
 import { renderDateBlock, renderMiniCalendar } from "./dateBlock";
 import { ChecklistItem, readChecklist, renderChecklist } from "./checklist";
-import { PositionedBlock, hourMarks, layoutTimeline, renderBlocks } from "./timeline";
+import { DAY_END_MINUTE, PositionedBlock, hourMarks, layoutTimeline, renderBlocks } from "./timeline";
 import { QuoteText, renderQuote } from "./quote";
 import { renderDoneList } from "./done";
 import { GreatThing, readGreatThings, renderGreatThings } from "./greatThings";
+
+function sameCalendarDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
 
 function el(tag: string, className: string, parent?: HTMLElement): HTMLElement {
   const node = document.createElement(tag);
@@ -17,7 +21,8 @@ function el(tag: string, className: string, parent?: HTMLElement): HTMLElement {
 /** What happens when the reader clicks something on the page. */
 export interface PageHandlers {
   onToggle?: (item: ChecklistItem, checked: boolean) => void;
-  onEdit?: (block: PositionedBlock) => void;
+  /** A click on a block. `isToday` is false on a past day's note, where "now" is not the note's time. */
+  onEdit?: (block: PositionedBlock, isToday: boolean) => void;
   /** A tap on an empty spot of the timeline, with the minute of the day it is at. */
   onPlan?: (minute: number) => void;
   onEditGreatThing?: (item: GreatThing) => void;
@@ -71,11 +76,14 @@ export function renderPage(
   const notesArea = el("div", "daily-page__notes-area", notesEl);
 
   const timeline = readTimeline(noteLines);
+  const isToday = sameCalendarDay(noteDay, now);
+  const onEdit = options.handlers?.onEdit;
   renderBlocks(
     timelineEl,
     notesArea,
-    layoutTimeline(timeline, minutesOfDay(now), options.tagColours ?? {}),
-    options.handlers?.onEdit,
+    // On a past day's note a running activity has no "now" to run up to, so it runs to the end of that day.
+    layoutTimeline(timeline, isToday ? minutesOfDay(now) : DAY_END_MINUTE, options.tagColours ?? {}),
+    onEdit && ((block) => onEdit(block, isToday)),
     options.handlers?.onPlan,
   );
 

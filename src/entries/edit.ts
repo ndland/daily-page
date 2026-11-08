@@ -40,7 +40,7 @@ function fail(message: string): EditOutcome {
   return { ok: false, message };
 }
 
-function cleanText(text: string): string {
+export function cleanText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
