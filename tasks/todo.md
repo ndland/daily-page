@@ -53,7 +53,7 @@ Every task also meets the standing bar: `npm test` and `npx tsc --noEmit` pass, 
   - Files: `scripts/release-prepare.mjs`, `scripts/lib/release.mjs`, `scripts/lib/release.d.mts`, `tests/releasePrepare.test.ts`, `package.json`.
   - Depends on: T2.
 
-- [ ] **T6: Apply a stable release** (M)
+- [x] **T6: Apply a stable release** (M)
   - Acceptance: without `--dry-run`, on a clean `main`, it updates `package.json`, `package-lock.json` and `manifest.json` to the new version, adds a `versions.json` entry only when `minAppVersion` changed, regenerates `CHANGELOG.md`, commits `chore(release): X`, and tags `X`. It never pushes. It refuses on a dirty tree or off `main`.
   - Verify: temporary git repository tests: the commit holds exactly the expected files, the tag points at it, `versions.json` is untouched when `minAppVersion` is unchanged, a dirty tree and a wrong branch are refused.
   - Files: `scripts/release-prepare.mjs`, `scripts/lib/release.mjs`, `tests/releasePrepare.test.ts`.

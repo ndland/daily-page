@@ -13,6 +13,7 @@ import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+  checkVersions,
   compareVersions,
   lastStableTag,
   nextVersion,
@@ -38,7 +39,14 @@ export function parseArgs(argv) {
 /** The real git, files, shell and output, for a repository at `cwd`. */
 export function createDeps(cwd = process.cwd()) {
   return {
-    git: (...args) => execFileSync("git", args, { cwd, encoding: "utf8" }).trim(),
+    git: (...args) => {
+      try {
+        return execFileSync("git", args, { cwd, encoding: "utf8", stdio: "pipe" }).trim();
+      } catch (error) {
+        // Show git's own message, which says why (for example, what a commit hook printed).
+        throw new Error(`git ${args.join(" ")} failed:\n${error.stderr || error.stdout || error.message}`);
+      }
+    },
     readText: (name) => readFileSync(join(cwd, name), "utf8"),
     writeText: (name, text) => writeFileSync(join(cwd, name), text),
     removeFile: (name) => rmSync(join(cwd, name), { force: true }),
@@ -117,7 +125,79 @@ export function prepareRelease(deps, options = {}) {
     log("Dry run: nothing was changed.");
     return result;
   }
-  throw new Error("Applying a release is not built yet. Use --dry-run.");
+
+  const branch = git("rev-parse", "--abbrev-ref", "HEAD");
+  if (branch !== "main") throw new Error(`Releases are made from main, and you are on ${branch}.`);
+  if (git("status", "--porcelain") !== "") {
+    throw new Error("The working tree has uncommitted changes. Commit or stash them before releasing.");
+  }
+  if (tags.includes(version)) throw new Error(`The tag ${version} already exists.`);
+
+  applyStable(deps, files, version, changed);
+  log(`Release ${version} is committed and tagged. Review it, then publish with: git push --follow-tags`);
+  return result;
+}
+
+/**
+ * Re-serialises a JSON file with a changed value, keeping its two-space indent, its line endings and its final
+ * newline, so a release changes the version line and nothing else.
+ */
+function toJson(original, value) {
+  const eol = original.includes("\r\n") ? "\r\n" : "\n";
+  const text = JSON.stringify(value, null, 2).split("\n").join(eol);
+  return original.endsWith("\n") ? text + eol : text;
+}
+
+/**
+ * Writes the new version into the files, regenerates the changelog, then commits and tags. It starts from a
+ * clean working tree, so if any step fails the release is undone: the commit (if one was made) is dropped, and
+ * every file goes back to exactly the text it had, or is removed if it did not exist. Nothing is left behind.
+ * The files are restored from a copy rather than with `git reset --hard`, which would rewrite their line endings.
+ */
+function applyStable(deps, files, version, changed) {
+  const { git, readText, writeText, removeFile, run } = deps;
+  const start = git("rev-parse", "HEAD");
+  const snapshot = new Map(
+    changed.map((name) => {
+      try {
+        return [name, readText(name)];
+      } catch {
+        return [name, null];
+      }
+    }),
+  );
+
+  const { packageJson, lock, manifest, versionsJson } = files;
+  const updates = {
+    "package.json": { ...packageJson, version },
+    "package-lock.json": { ...lock, version, packages: { ...lock.packages, "": { ...lock.packages[""], version } } },
+    "manifest.json": { ...manifest, version },
+    "versions.json": { ...versionsJson, [version]: manifest.minAppVersion },
+  };
+
+  try {
+    for (const name of changed.filter((file) => file !== "CHANGELOG.md")) {
+      writeText(name, toJson(readText(name), updates[name]));
+    }
+    const generated = run("npm", ["run", "changelog"]);
+    if (!generated.ok) throw new Error(`npm run changelog failed:\n${generated.output}`);
+
+    const problems = checkVersions({ ...readVersionFiles(readText), tag: version });
+    if (problems.length > 0) throw new Error(`The version files are wrong after the bump:\n${problems.join("\n")}`);
+
+    git("add", ...changed);
+    git("commit", "-m", `chore(release): ${version}`);
+    git("tag", "-a", version, "-m", version);
+  } catch (error) {
+    // Drop our commit if it was made, and unstage, keeping the working files; then put each file back.
+    if (git("rev-parse", "HEAD") !== start) git("reset", "-q", "--mixed", start);
+    git("reset", "-q");
+    for (const [name, text] of snapshot) {
+      if (text === null) removeFile(name);
+      else writeText(name, text);
+    }
+    throw error;
+  }
 }
 
 // Runs only when started from the command line, not when the tests import this file.
