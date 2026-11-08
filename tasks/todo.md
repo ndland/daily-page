@@ -14,7 +14,7 @@ Every task also meets the standing bar: `npm test` and `npx tsc --noEmit` pass, 
 
 ## Phase 1: Pure logic (no GitHub, no git)
 
-- [ ] **T2: Version library** (S)
+- [x] **T2: Version library** (S)
   - Acceptance:
     - Parses `X.Y.Z` and `X.Y.Z-beta.N`, and compares them (a beta is lower than its stable version).
     - Chooses the next version from a list of commit types: breaking or `feat` gives minor, `fix` gives patch (below 1.0); other types alone give "nothing to release".
