@@ -118,8 +118,17 @@
   line-height: var(--dp-dot-size);
 }
 
+/* A wrapped line starts under the first line of the text: the dash takes a fixed width, and the rest hangs. */
+.daily-page .daily-page__great-list li {
+  padding-left: 2ch;
+  text-indent: -2ch;
+}
+
 .daily-page .daily-page__great-list li::before {
-  content: "- ";
+  content: "-";
+  display: inline-block;
+  width: 2ch;
+  text-indent: 0;
 }
 
 .daily-page .daily-page__great-hint {
@@ -383,7 +392,7 @@
   right: 0.25rem;
   display: flex;
   align-items: center;
-  overflow: hidden;
+  overflow: visible;
   padding: 0 0.5rem;
   font-size: var(--dp-block-font-size);
   line-height: 1.1;
@@ -405,23 +414,21 @@
   top: 50%;
   transform: translateY(-50%);
   flex: none;
-  /* One line, so neighbouring short blocks never overlap their labels. The label stops at the
-     timeline's right edge (the block takes 30% of the width, so the label has 233% of the block
-     less the gap), and is cut with an ellipsis when it would run into the notes column. */
-  white-space: nowrap;
-  line-height: 1.1;
+  /* The label stops at the timeline's right edge (the block takes 30% of the width, so the label
+     has 233% of the block less the gap). A longer label wraps there. It is never cut short. */
+  width: max-content;
   max-width: calc(233.3% - 0.5rem);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.1;
 }
 
-/* The label stays on one line and is cut with an ellipsis when the block is too short or narrow. */
+/* A label wraps when the block is narrow, and spills past a block too short for it. It is never cut. */
 .daily-page .daily-page__block-label {
   min-width: 0;
   flex: 1 1 auto;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .daily-page__block.is-running {
@@ -432,6 +439,13 @@
   position: absolute;
   left: 0;
   right: 0;
+  /* A side note that does not fit on one line wraps. It is never cut short. The time and the text are two
+     columns, so a wrapped line starts under the first line of the text, not under the time. */
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 1ch;
+  white-space: normal;
+  overflow-wrap: anywhere;
   font-size: var(--dp-note-font-size);
   line-height: calc(var(--dp-dot-size) * 2);
 }
@@ -480,9 +494,8 @@
 /* Each row is one grid unit, so the rows sit on consecutive grid lines. */
 .daily-page__done-row {
   line-height: var(--dp-dot-size);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .daily-page__done-label {
@@ -498,8 +511,17 @@
   text-decoration-thickness: 1px;
 }
 
+/* The check mark takes a fixed width, so a wrapped line starts under the first line of the text. */
+.daily-page__done-item {
+  padding-left: 2ch;
+  text-indent: -2ch;
+}
+
 .daily-page__done-item::before {
-  content: "\2713\00a0";
+  content: "\2713";
+  display: inline-block;
+  width: 2ch;
+  text-indent: 0;
 }
 
 
@@ -566,15 +588,12 @@
   border-radius: 50%;
 }
 
-/* Text that must stay on its own line, so it cannot spill into the row below. Long side notes,
-   Three things, and todos are cut with an ellipsis, as blocks are. Hover or click shows the rest. */
-.daily-page__note,
+/* Three things and todos wrap when they do not fit on a line. Nothing on the page is cut short. */
 .daily-page .daily-page__great-list li,
 .daily-page .daily-page__checklist li > span:last-child {
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* Narrow screens, such as a phone in portrait (about 430px wide). This is the same layout with
@@ -778,8 +797,7 @@
 
   .daily-page .daily-page__block-label {
     white-space: normal;
-    overflow: hidden;
-    text-overflow: clip;
+    overflow: visible;
     line-height: 1.1;
   }
 
@@ -789,10 +807,10 @@
   }
 
   .daily-page__block.is-short .daily-page__block-label {
-    max-width: none;
-    white-space: nowrap;
+    /* The block takes 20% of the width here, so the label has up to 500% of the block, less the gap, and wraps there. */
+    max-width: calc(500% - 0.5rem);
+    white-space: normal;
     overflow: visible;
-    text-overflow: clip;
   }
 }
 

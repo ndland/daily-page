@@ -7,6 +7,9 @@ import { makeClickable } from "./access";
 export const AXIS_START = 6 * 60;
 export const AXIS_MINUTES = 21 * 60;
 
+/** The minute of the day the axis ends at (03:00), where a running activity on a past day's note stops. */
+export const DAY_END_MINUTE = (AXIS_START + AXIS_MINUTES) % MINUTES_PER_DAY;
+
 /** Hour labels as they appear in the reference page, top to bottom. */
 const HOUR_LABELS = [6, 9, 12, 15, 18, 21, 0, 3];
 
@@ -36,18 +39,22 @@ export function spreadShortLabels(timelineEl: HTMLElement): void {
     .filter((item): item is typeof item & { label: HTMLElement } => item.label !== null)
     .sort((a, b) => a.centre - b.centre);
 
+  // A label that wraps is taller than one line, so two labels need half of each one's height between their centres.
+  const heights = items.map((item) => Math.max(LABEL_GAP_PX, item.label.offsetHeight));
+  const gapBetween = (i: number): number => (heights[i - 1] + heights[i]) / 2;
+
   // Push each label down until it clears the one before, then pull back any label that would run
   // past the bottom of the axis, from the bottom up, as the notes are laid out.
   const centres: number[] = [];
   let previous = -Infinity;
-  for (const item of items) {
-    previous = Math.max(item.centre, previous + LABEL_GAP_PX);
+  items.forEach((item, i) => {
+    previous = Math.max(item.centre, i === 0 ? -Infinity : previous + gapBetween(i));
     centres.push(previous);
-  }
+  });
   let limit = height;
   for (let i = centres.length - 1; i >= 0; i--) {
     centres[i] = Math.min(centres[i], limit);
-    limit = centres[i] - LABEL_GAP_PX;
+    if (i > 0) limit = centres[i] - gapBetween(i);
   }
   // When the labels cannot all fit, they overlap, but none is placed off either end of the axis.
   for (let i = 0; i < centres.length; i++) {
@@ -211,7 +218,11 @@ export function renderBlocks(
       const time = document.createElement("span");
       time.className = "daily-page__note-time";
       time.textContent = block.timeText;
-      el.append(time, document.createTextNode(` ${block.label}`));
+      // The text is its own element too, so a note that wraps lines up under its first line, not under the time.
+      const text = document.createElement("span");
+      text.className = "daily-page__note-text";
+      text.textContent = ` ${block.label}`;
+      el.append(time, text);
       if (block.outOfAxis) el.classList.add("daily-page__out-of-axis");
       if (onEdit) makeClickable(el, () => onEdit(block));
       notesEl.appendChild(el);
@@ -227,8 +238,7 @@ export function renderBlocks(
     if (block.colour) el.style.setProperty("--dp-block-accent", block.colour);
     // Short blocks keep their colour strip at part width, and their label sits to the right.
     if (block.heightPct < SHORT_BLOCK_PCT) el.classList.add("is-short");
-    // Otherwise, one line of text, cut with an ellipsis if the block is too narrow for it.
-    // The full label is on hover.
+    // The text wraps when the block is narrow. The full label is also on hover.
     const full = `${block.timeText}  ${block.label}`;
     el.title = full;
     const label = document.createElement("span");

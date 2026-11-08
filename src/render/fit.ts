@@ -130,7 +130,10 @@ function fitDoneList(notes: HTMLElement, unit: number): void {
   const great = notes.querySelector<HTMLElement>(".daily-page__great");
   // Two gaps (above and below the notes area) and the minimum notes space come off the column.
   const budget = notes.clientHeight - (great?.offsetHeight ?? 0) - 2 * unit - MIN_NOTES_ROWS * unit;
-  const layout = doneLayout(items.length, budget, unit);
+  // A finished todo that wraps takes more than one row, so each is measured with every row showing.
+  for (const item of items) item.hidden = false;
+  const rowsOf = items.map((item) => Math.max(1, Math.ceil(item.offsetHeight / unit)));
+  const layout = doneLayoutByRows(rowsOf, budget, unit);
   items.forEach((item, i) => {
     item.hidden = i >= layout.shown;
   });
@@ -153,10 +156,24 @@ export interface DoneLayout {
  * label alone fills it.
  */
 export function doneLayout(total: number, budgetPx: number, unit: number): DoneLayout {
+  return doneLayoutByRows(new Array<number>(total).fill(1), budgetPx, unit);
+}
+
+/**
+ * Like doneLayout, for todos that may wrap: `rowsOf[i]` is how many rows the i-th todo takes. The todos
+ * that show are the first ones that fit, so a todo that wraps takes room from the ones after it.
+ */
+export function doneLayoutByRows(rowsOf: number[], budgetPx: number, unit: number): DoneLayout {
   const rows = Math.floor(budgetPx / unit); // includes the label row
-  if (total <= rows - 1) return { shown: total, more: false };
+  const total = rowsOf.reduce((sum, n) => sum + n, 0);
+  if (total <= rows - 1) return { shown: rowsOf.length, more: false };
   if (rows < 2) return { shown: 0, more: false };
-  return { shown: Math.max(0, rows - 2), more: true };
+
+  // The label and the "+N more" row take two rows. The todos take what is left, in order.
+  let left = rows - 2;
+  let shown = 0;
+  while (shown < rowsOf.length && rowsOf[shown] <= left) left -= rowsOf[shown++];
+  return { shown, more: true };
 }
 
 /**
@@ -177,7 +194,8 @@ function snapBaselines(notes: HTMLElement, unit: number): void {
   const probes = rows.map((row) => {
     const probe = document.createElement("span");
     probe.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
-    row.appendChild(probe);
+    // A side note lays its time and text side by side, so the probe goes in the text, on its last line.
+    (row.querySelector(".daily-page__note-text") ?? row).appendChild(probe);
     return probe;
   });
   const baselines = probes.map((probe) => probe.getBoundingClientRect().top - origin);
@@ -189,8 +207,8 @@ function snapBaselines(notes: HTMLElement, unit: number): void {
   });
 }
 
-/** Height of a timed note, in grid units. Matches its line-height in daily-page.css. */
-const NOTE_ROWS = 2;
+/** Height of one line of a timed note, in grid units. Matches its line-height in daily-page.css. */
+const NOTE_LINE_ROWS = 2;
 
 /**
  * Places each timed note at its time on the timeline's axis, in pixels from the top of the notes
@@ -215,7 +233,9 @@ export function placeNotes(page: HTMLElement, unit: number): void {
     return Math.round((axisOffsetPx + axisTop - areaTop) / unit);
   });
 
-  const starts = layOutRows(wanted, NOTE_ROWS, 0, Math.floor(area.clientHeight / unit));
+  // A long note wraps onto more lines, so each note takes as many rows as its text needs.
+  const heights = notes.map((note) => Math.max(NOTE_LINE_ROWS, Math.ceil(note.offsetHeight / unit)));
+  const starts = layOutRows(wanted, heights, 0, Math.floor(area.clientHeight / unit));
   notes.forEach((note, i) => {
     note.style.top = `${starts[i] * unit}px`;
   });

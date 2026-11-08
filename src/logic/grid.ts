@@ -19,12 +19,13 @@ export function gridLinePositions(lengthPx: number, unitPx: number): number[] {
 }
 
 /**
- * Places rows that are `height` units tall. Each row starts as near its wanted unit as it can,
+ * Places rows that are `height` units tall (or, given a list, as tall as their own entry). Each row starts as near its wanted unit as it can,
  * without overlapping another row, and inside [first, end). Rows keep their order in time. A row
  * that would fall past `end` is pulled back, and the rows above it move up with it. Returns each
  * row's start unit, in the same order as `wanted`.
  */
-export function layOutRows(wanted: number[], height: number, first: number, end: number): number[] {
+export function layOutRows(wanted: number[], height: number | number[], first: number, end: number): number[] {
+  const heightOf = (i: number): number => (typeof height === "number" ? height : height[i]);
   const order = wanted.map((_, i) => i).sort((a, b) => wanted[a] - wanted[b] || a - b);
   const starts: number[] = new Array(wanted.length);
 
@@ -32,16 +33,16 @@ export function layOutRows(wanted: number[], height: number, first: number, end:
   let previousEnd = first;
   for (const i of order) {
     starts[i] = Math.max(wanted[i], previousEnd);
-    previousEnd = starts[i] + height;
+    previousEnd = starts[i] + heightOf(i);
   }
 
   // Pull back any row that runs past the end, from the bottom up. When the rows cannot all fit,
   // they overlap, but none starts above `first`.
-  let limit = end - height;
+  let limit = end;
   for (let k = order.length - 1; k >= 0; k--) {
     const i = order[k];
-    starts[i] = Math.max(first, Math.min(starts[i], limit));
-    limit = starts[i] - height;
+    starts[i] = Math.max(first, Math.min(starts[i], limit - heightOf(i)));
+    limit = starts[i];
   }
   return starts;
 }

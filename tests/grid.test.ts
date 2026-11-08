@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { doneLayout, doneLayoutByRows } from "../src/render/fit";
 import { gridLinePositions, gridUnitPx, layOutRows } from "../src/logic/grid";
 
 describe("gridLinePositions", () => {
@@ -55,5 +56,50 @@ describe("layOutRows", () => {
 
   it("keeps a zero-height area from placing any row above the first unit", () => {
     expect(layOutRows([5], 2, 0, 0)).toEqual([0]);
+  });
+});
+
+describe("layOutRows with a height for each row", () => {
+  it("keeps a tall row clear of the row after it", () => {
+    // A wrapped note of four units, then a note that wanted the unit right below its first line.
+    expect(layOutRows([5, 7], [4, 2], 0, 20)).toEqual([5, 9]);
+  });
+
+  it("pulls a tall row back so it ends inside the area", () => {
+    expect(layOutRows([18, 19], [4, 2], 0, 20)).toEqual([14, 18]);
+  });
+});
+
+describe("doneLayoutByRows", () => {
+  it("shows every todo when their rows fit", () => {
+    expect(doneLayoutByRows([1, 2, 1], 6 * 10, 10)).toEqual({ shown: 3, more: false });
+  });
+
+  it("counts the rows a wrapped todo takes, and stops at the first one that does not fit", () => {
+    // Eight rows: the label and "+N more" take two, leaving six. 1 + 3 fit, and the next, of 3, does not.
+    expect(doneLayoutByRows([1, 3, 3, 1], 8 * 10, 10)).toEqual({ shown: 2, more: true });
+  });
+
+  it("matches doneLayout when every todo takes one row", () => {
+    expect(doneLayoutByRows([1, 1, 1, 1, 1], 5 * 10, 10)).toEqual(doneLayout(5, 5 * 10, 10));
+  });
+});
+
+describe("layOutRows and doneLayoutByRows, edges", () => {
+  it("returns no rows for no notes, and treats a number and a matching list alike", () => {
+    expect(layOutRows([], [], 0, 20)).toEqual([]);
+    expect(layOutRows([3, 3, 9], 2, 0, 20)).toEqual(layOutRows([3, 3, 9], [2, 2, 2], 0, 20));
+  });
+
+  it("keeps rows taller than the area inside it, without throwing", () => {
+    const starts = layOutRows([0, 0], [30, 30], 0, 20);
+    expect(starts.every((start) => start >= 0)).toBe(true);
+  });
+
+  it("handles no todos, a first todo too tall for the room, and an exact fit", () => {
+    expect(doneLayoutByRows([], 100, 10)).toEqual({ shown: 0, more: false });
+    expect(doneLayoutByRows([5, 1], 50, 10)).toEqual({ shown: 0, more: true });
+    expect(doneLayoutByRows([1], 10, 10)).toEqual({ shown: 0, more: false });
+    expect(doneLayoutByRows([1, 1, 1], 40, 10)).toEqual({ shown: 3, more: false });
   });
 });
