@@ -69,7 +69,24 @@ const longNote = [
 const runningNote = ["## Timeline", "- 09:00-10:00 Email #work", "- 13:00- Writing the release notes #deep", "", "## Checklist", "", "## Three things"];
 
 const params = new URLSearchParams(location.search);
-const modes: Record<string, string[]> = { empty: emptyNote, long: longNote, running: runningNote };
+/** Side notes of every length, to see how wrapped notes line up, space out and sit apart. ?note=notes */
+const notesNote = [
+  "## Timeline",
+  "- 08:00 note: Short note",
+  "- 09:00 note: Hectic trying to get everyone ready for family pictures",
+  "- 10:30 note: It was cold for pictures, but everyone did well. Hopefully the pictures turn out, and the grandparents liked the park.",
+  // Two notes close together, to show that a tall note pushes the next one down instead of overlapping it.
+  "- 12:00 note: A long note right before another one, which has to wrap onto several lines in the narrow notes column",
+  "- 12:10 note: And a second note ten minutes later",
+  "- 15:00 note: One more of medium length that wraps once",
+  "",
+  "## Checklist",
+  "",
+  "## Three things",
+  "- Wrapped lines sit on consecutive grid lines",
+];
+
+const modes: Record<string, string[]> = { empty: emptyNote, long: longNote, running: runningNote, notes: notesNote };
 let lines = [...(modes[params.get("note") ?? ""] ?? sampleNote)];
 
 // A fixed moment, so screenshots and measurements are repeatable: 14:30.
