@@ -33,7 +33,7 @@ export interface LineRef {
 const STALE = "That entry changed in the note. Reload the note and try again.";
 const RUNNING_TWICE = "Only one activity can be running at a time.";
 export const SPAN_RULE = "An activity must end after it starts, and last at most 12 hours.";
-const RUNNING_SPAN_RULE = "A running activity must have started before now, within the last 12 hours.";
+const RUNNING_SPAN_RULE = "A running activity must have started by now, within the last 12 hours.";
 const MAX_ACTIVITY_MINUTES = 12 * 60;
 
 function fail(message: string): EditOutcome {
@@ -92,9 +92,10 @@ export function editTimelineEntry(
     end = parseTime(edit.end.trim());
     if (end === null) return fail("End time must be HH:MM, or blank for a running activity.");
     if (!isValidSpan(start, end)) return fail(SPAN_RULE);
-  } else if (!isValidSpan(start, minute)) {
+  } else if (start !== minute && !isValidSpan(start, minute)) {
     // A running activity runs up to now, so its start must be within the last 12 hours. A start
-    // in the future would draw a block nearly a whole day tall.
+    // in the future would draw a block nearly a whole day tall. A start of exactly now is fine:
+    // it is what the hotkey writes, so it must stay editable in the minute it was logged.
     return fail(RUNNING_SPAN_RULE);
   }
 

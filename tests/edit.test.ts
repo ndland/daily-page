@@ -186,6 +186,19 @@ describe("editTimelineEntry, running spans and kinds", () => {
     expect(result.ok).toBe(true);
   });
 
+  // The hotkey starts an activity at the current minute. Editing it in that same minute (a new
+  // label, or a start set to now) must work, because logActivity itself writes that line.
+  it("accepts a running activity that starts this minute, as the hotkey creates it", () => {
+    const justLogged = ["## Timeline", "- 10:30- Email"];
+    const result = editEntry(justLogged, { raw: "- 10:30- Email", index: 0 }, { label: "Email #work", start: "10:30", end: "" }, NOON_ISH);
+    expect(result).toEqual({ ok: true, lines: ["## Timeline", "- 10:30- Email #work"] });
+  });
+
+  it("moves the start of a running activity to this minute", () => {
+    const result = editEntry(timeline, { raw: "- 09:00- Email", index: 0 }, { label: "Email", start: "10:30", end: "" }, NOON_ISH);
+    expect(result.ok).toBe(true);
+  });
+
   it("refuses to edit a side note as if it were an activity", () => {
     const result = editEntry(timeline, { raw: "- 09:40 note: idea", index: 2 }, { label: "Idea", start: "09:40", end: "10:00" }, NOON_ISH);
     expect(result).toEqual({ ok: false, message: expect.stringContaining("changed in the note") });
