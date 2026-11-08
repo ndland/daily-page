@@ -115,7 +115,7 @@ Every task also meets the standing bar: `npm test` and `npx tsc --noEmit` pass, 
   - Files: none (git operations).
   - Depends on: T11.
 
-- [ ] **T13: Beta dry run** (S, ask first)
+- [x] **T13: Beta dry run** (S, ask first)
   - Acceptance: `npm run release:prepare -- --beta` then pushing the tag publishes a prerelease with the three assets and a beta version in its `manifest.json`; BRAT installs it on desktop and shows the beta version; the prerelease and its tag are then deleted. If the job-level `contents: write` is not enough, the repository's workflow-permission setting is changed (ask first).
   - Verify: the Actions run is green; the release page shows the assets; BRAT shows the beta version; afterwards `gh release list` and `git ls-remote --tags origin` show no beta.
   - Files: none.
