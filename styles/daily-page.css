@@ -91,13 +91,17 @@
   border: none;
 }
 
-/* Text rows are two grid units tall. The plugin moves each row's baseline onto a grid line
+/* Text lines are one grid unit tall, so wrapped lines sit on consecutive grid lines. A one-line title or hint
+   gets half a unit above and below, and a note gets a gap row from the layout. The plugin moves each row's baseline onto a grid line
    (src/render/fit.ts), so the spacing does not depend on the font. */
 .daily-page .daily-page__great-title {
   margin: 0;
   font-size: 1.15rem;
   font-weight: 600;
-  line-height: calc(var(--dp-dot-size) * 2);
+  /* One unit per line, with half a unit above and below, so one line fills two rows and a wrapped title adds one
+     row per line instead of two. */
+  line-height: var(--dp-dot-size);
+  padding: calc(var(--dp-dot-size) / 2) 0;
   text-align: center;
   color: var(--dp-fg);
   border: none;
@@ -134,7 +138,8 @@
 .daily-page .daily-page__great-hint {
   margin: 0;
   font-size: 0.75rem;
-  line-height: calc(var(--dp-dot-size) * 2);
+  line-height: var(--dp-dot-size);
+  padding: calc(var(--dp-dot-size) / 2) 0;
   font-style: italic;
   color: var(--dp-fg);
 }
@@ -447,7 +452,9 @@
   white-space: normal;
   overflow-wrap: anywhere;
   font-size: var(--dp-note-font-size);
-  line-height: calc(var(--dp-dot-size) * 2);
+  /* One grid unit per line, so a wrapped note has no blank row between its lines. The gap below a note is added
+     by the layout (noteRows in src/render/fit.ts), not by a taller line. */
+  line-height: var(--dp-dot-size);
 }
 
 /* The time of a side note stands out from the note's text. */

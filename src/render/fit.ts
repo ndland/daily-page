@@ -207,8 +207,16 @@ function snapBaselines(notes: HTMLElement, unit: number): void {
   });
 }
 
-/** Height of one line of a timed note, in grid units. Matches its line-height in daily-page.css. */
-const NOTE_LINE_ROWS = 2;
+/** Rows left empty below a timed note, so two notes never touch. */
+const NOTE_GAP_ROWS = 1;
+
+/**
+ * Rows a timed note takes: one per line of text, which is one grid unit each, and a gap below. A note that cannot
+ * be measured (a height of 0) counts as one line.
+ */
+export function noteRows(heightPx: number, unit: number): number {
+  return Math.max(1, Math.ceil(heightPx / unit)) + NOTE_GAP_ROWS;
+}
 
 /**
  * Places each timed note at its time on the timeline's axis, in pixels from the top of the notes
@@ -234,7 +242,7 @@ export function placeNotes(page: HTMLElement, unit: number): void {
   });
 
   // A long note wraps onto more lines, so each note takes as many rows as its text needs.
-  const heights = notes.map((note) => Math.max(NOTE_LINE_ROWS, Math.ceil(note.offsetHeight / unit)));
+  const heights = notes.map((note) => noteRows(note.offsetHeight, unit));
   const starts = layOutRows(wanted, heights, 0, Math.floor(area.clientHeight / unit));
   notes.forEach((note, i) => {
     note.style.top = `${starts[i] * unit}px`;
