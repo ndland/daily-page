@@ -109,7 +109,7 @@ Every task also meets the standing bar: `npm test` and `npx tsc --noEmit` pass, 
   - Files: `README.md`, `SPEC-release.md`.
   - Depends on: T10.
 
-- [ ] **T12: Merge, force-push and repair the tags** (M, ask first at every step)
+- [x] **T12: Merge, force-push and repair the tags** (M, ask first at every step)
   - Acceptance, in order, each only on the maintainer's OK: merge `chore/commit-tooling` and `chore/release-pipeline` into `main`; force-push `main` with `--force-with-lease`; recreate tags `0.1.0` and `0.1.1` on the rewritten equivalents of their commits and push them; confirm both GitHub releases still show their three assets; delete the `backup/before-trailer-strip` branch.
   - Verify: `git log origin/main` matches local `main`; `git tag --merged main` lists both tags; `npm run changelog` now splits into two releases.
   - Files: none (git operations).
