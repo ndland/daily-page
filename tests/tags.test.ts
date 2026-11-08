@@ -48,3 +48,10 @@ describe("colourForLabel", () => {
     expect(colourForLabel("Lunch", colours)).toBeNull();
   });
 });
+
+describe("colourForLabel, tags named like Object methods", () => {
+  it("ignores a tag that is only an inherited property name", () => {
+    expect(colourForLabel("Test #constructor", { work: "#8be9fd" })).toBeNull();
+    expect(colourForLabel("Test #toString #work", { work: "#8be9fd" })).toBe("#8be9fd");
+  });
+});

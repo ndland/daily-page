@@ -33,7 +33,8 @@ export function parseTagColours(text: string): Record<string, string> {
 /** The colour for a label: the first of its tags that has a colour, or null. */
 export function colourForLabel(label: string, tagColours: Record<string, string>): string | null {
   for (const tag of extractTags(label)) {
-    if (tagColours[tag]) return tagColours[tag];
+    // Own keys only, so a tag such as #constructor is not mistaken for a colour inherited from Object.
+    if (Object.prototype.hasOwnProperty.call(tagColours, tag)) return tagColours[tag];
   }
   return null;
 }
