@@ -71,6 +71,17 @@ node harness/serve.mjs   # then open http://localhost:5173/harness/index.html
 
 The harness shows the page in a browser, at a phone or desktop width. It is a development tool only. It is not part of the plugin: `npm run release` copies just the plugin files listed above, so the harness, the vault view in `dist/vault/`, the source and the tests never reach the plugin package.
 
+## Commits and changelog
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): subject`, such as `fix(plan): refuse a block over 12 hours`. The scope is required and must be one of the areas listed in `commitlint.config.mjs`. A commit message hook (husky and commitlint) rejects anything else, and it is installed by `npm install`.
+
+```bash
+npm run commit     # stage your changes first, then pick the type and scope from a list
+npm run changelog  # regenerate CHANGELOG.md from the commit history
+```
+
+To add a scope, add it to the list in `commitlint.config.mjs`. The check and the prompt both read that one list. The changelog groups `feat` and `fix` commits by release tag, so tag a release before generating it.
+
 ## Licence
 
 Not yet chosen. Until a licence is added, all rights are reserved.

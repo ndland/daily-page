@@ -1,0 +1,2 @@
+# Hooks run under sh, which cannot read CRLF line endings.
+.husky/* text eol=lf
