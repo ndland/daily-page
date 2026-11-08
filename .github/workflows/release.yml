@@ -1,0 +1,85 @@
+# Publishes a release when a version tag is pushed. The local release:prepare command makes the tag (and, for a
+# stable release, the version commit); pushing the tag is the step that publishes.
+#
+#   X.Y.Z          a stable release, created as a DRAFT that you publish by hand
+#   X.Y.Z-beta.N   a beta, published straight away as a PRERELEASE so BRAT can install it
+#
+# Rules this file follows (SPEC-release.md, sections 6 and 12):
+#   - it starts only on a version tag, never on a branch push, and never on an unrelated tag
+#   - actions are pinned to a full commit SHA, and the token can only read, except in the one job that publishes
+#   - the tag name reaches the shell only through the TAG environment variable, always quoted
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+'
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+      # npm ci would otherwise install the git hooks, which a release build does not need.
+      HUSKY: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The full history, so the commits since the previous release can be checked.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check the version files against the tag
+        run: node scripts/check-versions.mjs "$TAG"
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Check commit messages since the previous release
+        run: |
+          previous=$(git describe --tags --abbrev=0 --match '[0-9]*.[0-9]*.[0-9]*' --exclude '*-*' "$TAG^" 2>/dev/null || true)
+          if [ -z "$previous" ]; then
+            echo "No earlier release, so there is no commit range to check."
+          else
+            npx commitlint --from "$previous" --to "$TAG" --verbose
+          fi
+
+      - name: Build and package the plugin
+        run: npm run release
+
+      - name: Write the tag's version into the packaged manifest
+        run: node scripts/stamp-manifest.mjs release/daily-page "$TAG"
+
+      - name: Write the release notes
+        run: node scripts/release-notes.mjs "$TAG" > "$RUNNER_TEMP/notes.md"
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ "$TAG" == *-beta.* ]]; then
+            kind=--prerelease
+          else
+            kind=--draft
+          fi
+          gh release create "$TAG" \
+            release/daily-page/main.js \
+            release/daily-page/manifest.json \
+            release/daily-page/styles.css \
+            --verify-tag \
+            --title "$TAG" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            "$kind"

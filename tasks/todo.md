@@ -78,7 +78,7 @@ Every task also meets the standing bar: `npm test` and `npx tsc --noEmit` pass, 
 
 ## Phase 3: Workflows
 
-- [ ] **T9: Release workflow, `.nvmrc` and the beta stamp** (M)
+- [x] **T9: Release workflow, `.nvmrc` and the beta stamp** (M)
   - Acceptance:
     - `.nvmrc` holds `26`.
     - `release.yml` triggers on `'[0-9]+.[0-9]+.[0-9]+'` and `'[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+'` only; has `permissions: contents: read` at workflow level and `contents: write` only on the publish job.

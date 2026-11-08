@@ -187,3 +187,13 @@ export function formatBetaNotes(base, subjects) {
   const body = listed.length === 0 ? "No user-facing changes yet." : listed.map((subject) => `- ${subject}`).join("\n");
   return `## Pre-release of ${base}\n\nChanges since the last stable release:\n\n${body}`;
 }
+
+/**
+ * Re-serialises a JSON file with a changed value, keeping its two-space indent, its line endings and its final
+ * newline, so a release changes the version line and nothing else.
+ */
+export function toJson(original, value) {
+  const eol = original.includes("\r\n") ? "\r\n" : "\n";
+  const text = JSON.stringify(value, null, 2).split("\n").join(eol);
+  return original.endsWith("\n") ? text + eol : text;
+}

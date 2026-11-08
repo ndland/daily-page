@@ -53,3 +53,6 @@ export function extractNotes(changelog: string, version: string): string | null;
 
 /** Release notes for a beta: the feat, fix and breaking commit subjects, under a pre-release heading. */
 export function formatBetaNotes(base: string, subjects: string[]): string;
+
+/** Re-serialises a JSON file with a changed value, keeping its indent, line endings and final newline. */
+export function toJson(original: string, value: unknown): string;

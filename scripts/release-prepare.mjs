@@ -21,6 +21,7 @@ import {
   parseCommit,
   parseVersion,
   readVersionFiles,
+  toJson,
   versionsJsonNeedsEntry,
 } from "./lib/release.mjs";
 
@@ -204,16 +205,6 @@ function prepareBeta(deps, { base, bump, tags, last, commits, dryRun }) {
   git("tag", "-a", tag, "-m", tag);
   log(`Beta ${tag} is tagged on the current commit. Publish it with: git push origin ${tag}`);
   return result;
-}
-
-/**
- * Re-serialises a JSON file with a changed value, keeping its two-space indent, its line endings and its final
- * newline, so a release changes the version line and nothing else.
- */
-function toJson(original, value) {
-  const eol = original.includes("\r\n") ? "\r\n" : "\n";
-  const text = JSON.stringify(value, null, 2).split("\n").join(eol);
-  return original.endsWith("\n") ? text + eol : text;
 }
 
 /**
