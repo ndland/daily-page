@@ -44,3 +44,6 @@ export function versionsJsonNeedsEntry(versions: Record<string, string>, minAppV
 
 /** Problems that would make a release wrong, as messages. Empty when there are none. */
 export function checkVersions(input: JsonVersionFiles): string[];
+
+/** Reads and parses package.json, package-lock.json, manifest.json and versions.json, or throws naming the file. */
+export function readVersionFiles(readText: (name: string) => string): Omit<JsonVersionFiles, "tag">;

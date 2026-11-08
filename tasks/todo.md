@@ -25,7 +25,7 @@ Every task also meets the standing bar: `npm test` and `npx tsc --noEmit` pass, 
   - Files: `scripts/lib/release.mjs`, `scripts/lib/release.d.mts`, `tests/releaseLib.test.ts`.
   - Depends on: T1.
 
-- [ ] **T3: `check-versions` command** (S)
+- [x] **T3: `check-versions` command** (S)
   - Acceptance: `node scripts/check-versions.mjs [tag]` reads `package.json`, `package-lock.json`, `manifest.json` and `versions.json`, exits 0 when they agree (and match the tag), and exits 1 with the library's message otherwise. A beta tag passes when its base is higher than the manifest version. `npm run release:check` runs it.
   - Verify: `npx vitest run tests/checkVersions.test.ts` (temporary project folders: agreeing, one file off, tag mismatch, beta tag, missing file); then run it in this repo with no tag and expect exit 0.
   - Files: `scripts/check-versions.mjs`, `tests/checkVersions.test.ts`, `package.json`.

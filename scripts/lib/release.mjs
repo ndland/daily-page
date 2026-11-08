@@ -137,3 +137,23 @@ export function checkVersions({ packageJson, lock, manifest, versionsJson, tag }
   }
   return problems;
 }
+
+/**
+ * Reads and parses the four version files through `readText`, which returns a file's text or throws. A file
+ * that is missing or is not JSON stops the release with its name, rather than with a stack trace.
+ */
+export function readVersionFiles(readText) {
+  const read = (name) => {
+    try {
+      return JSON.parse(readText(name));
+    } catch (error) {
+      throw new Error(`${name} could not be read: ${error instanceof Error ? error.message : error}`);
+    }
+  };
+  return {
+    packageJson: read("package.json"),
+    lock: read("package-lock.json"),
+    manifest: read("manifest.json"),
+    versionsJson: read("versions.json"),
+  };
+}
