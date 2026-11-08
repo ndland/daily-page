@@ -840,6 +840,21 @@
   border-radius: 4px;
 }
 
+.daily-page__dialog-extra {
+  margin: 0.25rem 0 0 0.5rem;
+  padding: 0.35rem 1rem;
+  background: transparent;
+  color: #f8f8f2;
+  border: 1px solid #6272a4;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* An empty spot on the timeline plans a block when tapped. */
+.daily-page__timeline.is-plannable {
+  cursor: cell;
+}
+
 .daily-page__dialog-save {
   margin-top: 0.25rem;
   padding: 0.35rem 1rem;

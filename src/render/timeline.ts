@@ -87,6 +87,16 @@ export function axisOffset(minutes: number): number {
   return (minutes - AXIS_START + MINUTES_PER_DAY) % MINUTES_PER_DAY;
 }
 
+/**
+ * The minute of the day at a point down the timeline, where `fraction` is 0 at the top (06:00) and 1 at the
+ * bottom. Rounded down to a multiple of `step` minutes, so a tap lands on a tidy time.
+ */
+export function minuteAtFraction(fraction: number, step = 15): number {
+  const clamped = Math.min(Math.max(fraction, 0), 1);
+  const offset = Math.min(Math.floor((clamped * AXIS_MINUTES) / step) * step, AXIS_MINUTES - step);
+  return (AXIS_START + offset) % MINUTES_PER_DAY;
+}
+
 function toPercent(offsetMinutes: number): number {
   return (offsetMinutes / AXIS_MINUTES) * 100;
 }
@@ -176,7 +186,19 @@ export function renderBlocks(
   notesEl: HTMLElement,
   blocks: PositionedBlock[],
   onEdit?: (block: PositionedBlock) => void,
+  onPlan?: (minute: number) => void,
 ): void {
+  // A tap on empty timeline, not on a block, plans a block at that time.
+  if (onPlan) {
+    timelineEl.classList.add("is-plannable");
+    timelineEl.addEventListener("click", (event) => {
+      if (event.target !== timelineEl) return;
+      const box = timelineEl.getBoundingClientRect();
+      if (box.height === 0) return;
+      onPlan(minuteAtFraction((event.clientY - box.top) / box.height));
+    });
+  }
+
   for (const block of blocks) {
     if (block.kind === "note") {
       const el = document.createElement("div");

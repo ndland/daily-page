@@ -30,7 +30,7 @@ export interface LineRef {
   index: number;
 }
 
-const STALE = "That entry changed in the note. Reload the note and try again.";
+export const STALE = "That entry changed in the note. Reload the note and try again.";
 const RUNNING_TWICE = "Only one activity can be running at a time.";
 export const SPAN_RULE = "An activity must end after it starts, and last at most 12 hours.";
 const RUNNING_SPAN_RULE = "A running activity must have started by now, within the last 12 hours.";

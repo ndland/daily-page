@@ -1,4 +1,6 @@
 import { editGreatThing, editNoteText, editTimelineEntry, type LineRef, type ScopeEdit } from "../entries/edit";
+import { planBlock, startPlannedBlock } from "../entries/log";
+import { MINUTES_PER_DAY, formatTime } from "../logic/time";
 import type { GreatThing } from "../render/greatThings";
 import type { PositionedBlock } from "../render/timeline";
 import { openFieldsDialog } from "./dialog";
@@ -28,6 +30,31 @@ export function openBlockEditor(block: PositionedBlock, save: (edit: ScopeEdit) 
     ],
     ([label, startText, endText]) => {
       save((scope, minute) => editTimelineEntry(scope, ref, { label, start: startText, end: endText }, minute));
+    },
+    // A block that has ended can be started again now. A running one is already started.
+    block.running
+      ? []
+      : [{ label: "Start now", run: () => save((scope, minute) => startPlannedBlock(scope, ref, minute)) }],
+  );
+}
+
+/** Minutes a new plan lasts until the reader changes its end. */
+const DEFAULT_PLAN_MINUTES = 30;
+
+/**
+ * Opens the dialog for planning a block: a label, a start and an end. `start` is the minute of the day to
+ * suggest. `save` receives the plan as a scope edit, to apply to the note.
+ */
+export function openPlanDialog(start: number, save: (edit: ScopeEdit) => void): void {
+  openFieldsDialog(
+    "Plan a block",
+    [
+      { label: "Label (tags such as #work set the colour)", value: "" },
+      { label: "Start (HH:MM)", value: formatTime(start) },
+      { label: "End (HH:MM)", value: formatTime((start + DEFAULT_PLAN_MINUTES) % MINUTES_PER_DAY) },
+    ],
+    ([label, startText, endText]) => {
+      save((scope) => planBlock(scope, { label, start: startText, end: endText }));
     },
   );
 }

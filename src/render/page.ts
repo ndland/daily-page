@@ -18,6 +18,8 @@ function el(tag: string, className: string, parent?: HTMLElement): HTMLElement {
 export interface PageHandlers {
   onToggle?: (item: ChecklistItem, checked: boolean) => void;
   onEdit?: (block: PositionedBlock) => void;
+  /** A tap on an empty spot of the timeline, with the minute of the day it is at. */
+  onPlan?: (minute: number) => void;
   onEditGreatThing?: (item: GreatThing) => void;
 }
 
@@ -74,6 +76,7 @@ export function renderPage(
     notesArea,
     layoutTimeline(timeline, minutesOfDay(now), options.tagColours ?? {}),
     options.handlers?.onEdit,
+    options.handlers?.onPlan,
   );
 
   const footer = el("div", "daily-page__footer", page);

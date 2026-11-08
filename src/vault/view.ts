@@ -18,7 +18,7 @@ import { createdMsOf, noteDateOf } from "../logic/noteDate";
 import type { QuoteText } from "../render/quote";
 import { PageEditor, reasonOf } from "./editFlow";
 import { DEFAULT_DAILY_PATTERN } from "../logic/paths";
-import { openBlockEditor, openGreatThingEditor } from "./editor";
+import { openBlockEditor, openGreatThingEditor, openPlanDialog } from "./editor";
 import { VIEW_SETTINGS } from "./settings";
 
 // Provided by Dataview when this file runs as a view.
@@ -120,6 +120,7 @@ async function draw(liveText?: string): Promise<void> {
         void editNote(path, (scope) => setChecklistItem(scope, item, checked));
       },
       onEdit: (block) => openBlockEditor(block, (edit) => void editNote(path, edit)),
+      onPlan: (minute) => openPlanDialog(minute, (edit) => void editNote(path, edit)),
       onEditGreatThing: (item) => openGreatThingEditor(item, (edit) => void editNote(path, edit)),
     },
   });

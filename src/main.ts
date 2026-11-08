@@ -23,6 +23,7 @@ import { DEFAULT_NEW_NOTE_CONTENT, resolveNewNote } from "./logic/newNote";
 import { DEFAULT_SETTINGS, DailyPageSettings, normaliseSettings } from "./logic/settings";
 import { drawNoteQuote } from "./logic/noteQuote";
 import { parseTagColours } from "./logic/tags";
+import { minutesOfDay, nextHalfHour } from "./logic/time";
 import { MULTIPLE_BLOCKS, NO_PAGE_MESSAGE, countDailyPageBlocks, scopeOf } from "./logic/scope";
 import { QuoteStore, pruneQuotes } from "./logic/quoteCache";
 import { renderPage } from "./render/page";
@@ -31,7 +32,7 @@ import { keepFitted } from "./render/fit";
 import { resolveReadOnly } from "./logic/readOnly";
 import { PageEditor, READ_ONLY_MESSAGE, reasonOf } from "./vault/editFlow";
 import { NoteCreator } from "./vault/noteCreator";
-import { openBlockEditor, openGreatThingEditor } from "./vault/editor";
+import { openBlockEditor, openGreatThingEditor, openPlanDialog } from "./vault/editor";
 
 
 type LogAction = (timeline: TimelineLine[], now: number) => LogOutcome;
@@ -89,6 +90,15 @@ export default class DailyPagePlugin extends Plugin {
       name: "End running activity",
       hotkeys: [{ modifiers: ["Alt", "Shift"], key: "E" }],
       callback: () => this.log((timeline, now) => endRunning(timeline, now)),
+    });
+
+    this.addCommand({
+      id: "plan-block",
+      name: "Plan a block",
+      hotkeys: [{ modifiers: ["Alt", "Shift"], key: "P" }],
+      callback: () =>
+        // Suggests the next half hour, so a plan is a block ahead by default.
+        openPlanDialog(nextHalfHour(minutesOfDay(new Date())), (edit) => void this.planToday(edit)),
     });
 
     this.addCommand({
@@ -244,6 +254,14 @@ export default class DailyPagePlugin extends Plugin {
     return content;
   }
 
+  /** Applies a plan to today's note, creating the note if needed. */
+  private async planToday(edit: ScopeEdit): Promise<void> {
+    await this.guard(async () => {
+      const file = await this.ensureTodayNote(new Date());
+      await this.editFile(file.path, edit);
+    });
+  }
+
   /** Adds an open todo to today's checklist. */
   private async addTodo(text: string): Promise<void> {
     await this.guard(async () => {
@@ -373,6 +391,7 @@ export default class DailyPagePlugin extends Plugin {
           void this.editFile(sourcePath, (scope) => setChecklistItem(scope, item, checked));
         },
         onEdit: (block) => openBlockEditor(block, (edit) => void this.editFile(sourcePath, edit)),
+        onPlan: (minute) => openPlanDialog(minute, (edit) => void this.editFile(sourcePath, edit)),
         onEditGreatThing: (item) =>
           openGreatThingEditor(item, (edit) => void this.editFile(sourcePath, edit)),
       },

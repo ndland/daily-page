@@ -4,6 +4,12 @@ export interface DialogField {
   value: string;
 }
 
+/** An extra button beside Save. It closes the dialog, then runs with the field values. */
+export interface DialogAction {
+  label: string;
+  run: (values: string[]) => void;
+}
+
 /**
  * Opens a small dialog with one text box per field. Save, or Enter, passes every value to
  * `onSave`. Escape, or a click outside the box, closes it without saving. The dialog is announced
@@ -12,7 +18,12 @@ export interface DialogField {
  * This is plain DOM, so it works inside a Dataview view, where Obsidian's Modal class is not
  * available to the view file.
  */
-export function openFieldsDialog(title: string, fields: DialogField[], onSave: (values: string[]) => void): void {
+export function openFieldsDialog(
+  title: string,
+  fields: DialogField[],
+  onSave: (values: string[]) => void,
+  extraActions: DialogAction[] = [],
+): void {
   const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
   const overlay = document.createElement("div");
@@ -59,6 +70,17 @@ export function openFieldsDialog(title: string, fields: DialogField[], onSave: (
   button.className = "daily-page__dialog-save";
   button.addEventListener("click", save);
   box.appendChild(button);
+
+  for (const action of extraActions) {
+    const extra = document.createElement("button");
+    extra.textContent = action.label;
+    extra.className = "daily-page__dialog-extra";
+    extra.addEventListener("click", () => {
+      close();
+      action.run(inputs.map((input) => input.value));
+    });
+    box.appendChild(extra);
+  }
 
   overlay.appendChild(box);
   overlay.addEventListener("click", (event) => {
