@@ -31,7 +31,7 @@ Every task also meets the standing bar: `npm test` and `npx tsc --noEmit` pass, 
   - Files: `scripts/check-versions.mjs`, `tests/checkVersions.test.ts`, `package.json`.
   - Depends on: T2.
 
-- [ ] **T4: `release-notes` command** (S)
+- [x] **T4: `release-notes` command** (S)
   - Acceptance:
     - `node scripts/release-notes.mjs 0.2.0` prints that version's `CHANGELOG.md` section, for both heading styles the generator writes (`## 0.2.0 (date)` and `## [0.2.0](link) (date)`), and stops at the next version heading.
     - A version with no section exits 1 and says so.

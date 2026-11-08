@@ -157,3 +157,33 @@ export function readVersionFiles(readText) {
     versionsJson: read("versions.json"),
   };
 }
+
+/**
+ * One version's section of a generated changelog, without its heading, or null when there is none. The
+ * generator writes "## 0.2.0 (date)" or, once there is a previous tag, "## [0.2.0](compare link) (date)".
+ */
+export function extractNotes(changelog, version) {
+  const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const heading = new RegExp(`^##\\s+\\[?${escaped}\\]?(?:\\(|\\s|$)`);
+  const lines = changelog.split(/\r?\n/);
+  const start = lines.findIndex((line) => heading.test(line));
+  if (start === -1) return null;
+
+  // "### Features" is a sub-heading. Only "## " starts the next version.
+  const length = lines.slice(start + 1).findIndex((line) => /^##\s/.test(line));
+  const body = length === -1 ? lines.slice(start + 1) : lines.slice(start + 1, start + 1 + length);
+  return body.join("\n").trim();
+}
+
+/**
+ * Release notes for a beta, which has no changelog section: the feat, fix and breaking commit subjects since
+ * the last stable release, under a heading that names the version the beta leads up to.
+ */
+export function formatBetaNotes(base, subjects) {
+  const listed = subjects.filter((subject) => {
+    const { type, breaking } = parseCommit(subject);
+    return breaking || type === "feat" || type === "fix";
+  });
+  const body = listed.length === 0 ? "No user-facing changes yet." : listed.map((subject) => `- ${subject}`).join("\n");
+  return `## Pre-release of ${base}\n\nChanges since the last stable release:\n\n${body}`;
+}

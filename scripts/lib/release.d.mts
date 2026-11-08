@@ -47,3 +47,9 @@ export function checkVersions(input: JsonVersionFiles): string[];
 
 /** Reads and parses package.json, package-lock.json, manifest.json and versions.json, or throws naming the file. */
 export function readVersionFiles(readText: (name: string) => string): Omit<JsonVersionFiles, "tag">;
+
+/** One version's section of a generated changelog without its heading, or null when there is none. */
+export function extractNotes(changelog: string, version: string): string | null;
+
+/** Release notes for a beta: the feat, fix and breaking commit subjects, under a pre-release heading. */
+export function formatBetaNotes(base: string, subjects: string[]): string;
