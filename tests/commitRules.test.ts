@@ -8,7 +8,9 @@ function lint(message: string): { accepted: boolean; output: string } {
   return { accepted: run.status === 0, output: `${run.stdout}${run.stderr}` };
 }
 
-describe("commit message rules", () => {
+// Each message starts a Node process that loads the commitlint config, which took 4.8 s of the default 5 s when
+// the whole suite ran at once.
+describe("commit message rules", { timeout: 30_000 }, () => {
   it("accepts a type, a listed scope and a subject, with or without a body", () => {
     expect(lint("fix(plan): refuse a block over 12 hours\n").accepted).toBe(true);
     expect(lint("fix(plan): refuse a block over 12 hours\n\nThe span rule was skipped for plans.\n").accepted).toBe(true);
