@@ -16,6 +16,7 @@ import {
   checkVersions,
   compareVersions,
   lastStableTag,
+  nextBeta,
   nextVersion,
   parseCommit,
   parseVersion,
@@ -111,6 +112,7 @@ export function prepareRelease(deps, options = {}) {
   const last = lastStableTag(tags);
   const commits = commitsSince(git, last);
   const { version, bump } = chooseVersion(current, commits, options.version);
+  if (options.beta) return prepareBeta(deps, { base: version, bump, tags, last, commits, dryRun: options.dryRun });
 
   const changed = ["package.json", "package-lock.json", "manifest.json"];
   if (versionsJsonNeedsEntry(files.versionsJson, files.manifest.minAppVersion)) changed.push("versions.json");
@@ -126,15 +128,43 @@ export function prepareRelease(deps, options = {}) {
     return result;
   }
 
+  requireCleanMain(git);
+  if (tags.includes(version)) throw new Error(`The tag ${version} already exists.`);
+
+  applyStable(deps, files, version, changed);
+  log(`Release ${version} is committed and tagged. Review it, then publish with: git push --follow-tags`);
+  return result;
+}
+
+/** Stops unless the repository is on main with nothing uncommitted, so a release is made from known work. */
+function requireCleanMain(git) {
   const branch = git("rev-parse", "--abbrev-ref", "HEAD");
   if (branch !== "main") throw new Error(`Releases are made from main, and you are on ${branch}.`);
   if (git("status", "--porcelain") !== "") {
     throw new Error("The working tree has uncommitted changes. Commit or stash them before releasing.");
   }
-  if (tags.includes(version)) throw new Error(`The tag ${version} already exists.`);
+}
 
-  applyStable(deps, files, version, changed);
-  log(`Release ${version} is committed and tagged. Review it, then publish with: git push --follow-tags`);
+/**
+ * A beta is a tag and nothing else: no commit and no file change. BRAT's developer guide says not to commit a
+ * beta's version to the default branch, and the release workflow writes the beta version into the packaged
+ * manifest only. A beta adds no commit, so only the tag is pushed.
+ */
+function prepareBeta(deps, { base, bump, tags, last, commits, dryRun }) {
+  const { git, log } = deps;
+  const tag = nextBeta(base, tags);
+  const since = last === null ? "the first commit" : last;
+  log(`Next beta: ${tag}${bump ? ` (${describeCommits(commits)}, since ${since})` : " (given)"}`);
+  log("A beta makes a tag only: no commit and no file change.");
+
+  const result = { version: tag, bump, files: [], last };
+  if (dryRun) {
+    log("Dry run: nothing was changed.");
+    return result;
+  }
+  requireCleanMain(git);
+  git("tag", "-a", tag, "-m", tag);
+  log(`Beta ${tag} is tagged on the current commit. Publish it with: git push origin ${tag}`);
   return result;
 }
 

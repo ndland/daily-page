@@ -59,7 +59,7 @@ Every task also meets the standing bar: `npm test` and `npx tsc --noEmit` pass, 
   - Files: `scripts/release-prepare.mjs`, `scripts/lib/release.mjs`, `tests/releasePrepare.test.ts`.
   - Depends on: T5.
 
-- [ ] **T7: Beta tag** (S)
+- [x] **T7: Beta tag** (S)
   - Acceptance: `npm run release:prepare -- --beta` creates only the tag `X-beta.N` on the current commit, with `N` one more than the highest existing beta of that base version (or 1), makes no commit, and changes no file. The base `X` must be higher than the version in `manifest.json`, or it refuses.
   - Verify: temporary git repository tests: first beta, second beta, base not higher than manifest (refused), working tree unchanged and no new commit.
   - Files: `scripts/release-prepare.mjs`, `scripts/lib/release.mjs`, `tests/releasePrepare.test.ts`.
