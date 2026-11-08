@@ -112,6 +112,14 @@ export function prepareRelease(deps, options = {}) {
   const last = lastStableTag(tags);
   const commits = commitsSince(git, last);
   const { version, bump } = chooseVersion(current, commits, options.version);
+
+  // The cheap checks come first, so a wrong branch or a dirty tree fails before the slow gates run.
+  if (!options.dryRun) {
+    requireCleanMain(git);
+    if (!options.beta && tags.includes(version)) throw new Error(`The tag ${version} already exists.`);
+  }
+  runGates(deps, files, last);
+
   if (options.beta) return prepareBeta(deps, { base: version, bump, tags, last, commits, dryRun: options.dryRun });
 
   const changed = ["package.json", "package-lock.json", "manifest.json"];
@@ -128,12 +136,43 @@ export function prepareRelease(deps, options = {}) {
     return result;
   }
 
-  requireCleanMain(git);
-  if (tags.includes(version)) throw new Error(`The tag ${version} already exists.`);
-
   applyStable(deps, files, version, changed);
   log(`Release ${version} is committed and tagged. Review it, then publish with: git push --follow-tags`);
   return result;
+}
+
+/** The checks that run before a release is made. The first one to fail stops everything. */
+const GATES = [
+  { name: "tests", command: "npm", args: ["test"] },
+  { name: "type check", command: "npx", args: ["tsc", "--noEmit"] },
+  { name: "dependency audit", command: "npm", args: ["audit", "--audit-level=high"] },
+];
+
+/** The last lines of a command's output, which is where a failure says why. */
+function tail(output, lines = 40) {
+  return output.trim().split(/\r?\n/).slice(-lines).join("\n");
+}
+
+/**
+ * Runs every gate, in order, before anything is changed, and stops at the first that fails with its output.
+ * The commit messages since the last release are checked with commitlint, which needs a release to start from.
+ * The version files are checked here too, so a release is never prepared from files that already disagree.
+ */
+function runGates(deps, files, last) {
+  const { run, log } = deps;
+  const steps = [...GATES];
+  if (last === null) log("No earlier release, so the commit message check was skipped.");
+  else steps.push({ name: "commit messages", command: "npx", args: ["commitlint", "--from", last, "--to", "HEAD"] });
+
+  for (const { name, command, args } of steps) {
+    const result = run(command, args);
+    if (!result.ok) throw new Error(`Gate failed: ${name}\n${tail(result.output)}`);
+    log(`Gate passed: ${name}`);
+  }
+
+  const problems = checkVersions(files);
+  if (problems.length > 0) throw new Error(`Gate failed: version files\n${problems.join("\n")}`);
+  log("Gate passed: version files");
 }
 
 /** Stops unless the repository is on main with nothing uncommitted, so a release is made from known work. */
@@ -162,7 +201,6 @@ function prepareBeta(deps, { base, bump, tags, last, commits, dryRun }) {
     log("Dry run: nothing was changed.");
     return result;
   }
-  requireCleanMain(git);
   git("tag", "-a", tag, "-m", tag);
   log(`Beta ${tag} is tagged on the current commit. Publish it with: git push origin ${tag}`);
   return result;

@@ -65,7 +65,7 @@ Every task also meets the standing bar: `npm test` and `npx tsc --noEmit` pass, 
   - Files: `scripts/release-prepare.mjs`, `scripts/lib/release.mjs`, `tests/releasePrepare.test.ts`.
   - Depends on: T6.
 
-- [ ] **T8: Gates before any change** (M)
+- [x] **T8: Gates before any change** (M)
   - Acceptance: before touching a file, it runs the gates through the injected runner, in order: `npm test`, `npx tsc --noEmit`, `npm audit --audit-level=high`, commitlint on the commit range since the last tag, and `check-versions`. The first failure stops it with that gate's output and leaves no commit, no tag and no changed file. If a step after the first write fails, the files are restored.
   - Verify: tests with a fake runner that fails each gate in turn, and one that fails after the first write; the real gates run once in this repo with `--dry-run`.
   - Files: `scripts/release-prepare.mjs`, `scripts/lib/release.mjs`, `tests/releasePrepare.test.ts`.

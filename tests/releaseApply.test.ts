@@ -112,7 +112,8 @@ describe("prepareRelease: refusing to start", () => {
 describe("prepareRelease: a failure leaves nothing behind", () => {
   it("restores every file when the changelog step fails", () => {
     const r = repo();
-    r.deps.run = () => ({ ok: false, output: "changelog broke" });
+    // Only the changelog step fails, so the gates pass and the failure comes after the files were written.
+    r.deps.run = (_command: string, args: string[]) => ({ ok: !args.includes("changelog"), output: "changelog broke" });
     r.commit("feat(plan): add a thing");
     const head = r.git("rev-parse", "HEAD");
     const before = read(r.dir, "package.json");
@@ -167,7 +168,8 @@ describe("prepareRelease: a failure leaves nothing behind", () => {
     writeFileSync(join(r.dir, "CHANGELOG.md"), "## 0.1.1 (old)\n");
     r.git("add", ".");
     r.git("commit", "-q", "-m", "docs(changelog): add one");
-    r.deps.run = () => ({ ok: false, output: "changelog broke" });
+    // Only the changelog step fails, so the gates pass and the failure comes after the files were written.
+    r.deps.run = (_command: string, args: string[]) => ({ ok: !args.includes("changelog"), output: "changelog broke" });
     r.commit("feat(plan): add a thing");
 
     expect(() => prepareRelease(r.deps, {})).toThrow();

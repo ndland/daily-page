@@ -17,6 +17,8 @@ export interface Repo {
   commit: (subject: string, body?: string) => void;
   tag: (name: string) => void;
   messages: string[];
+  /** Every shell command release:prepare ran, as "command arg arg". The fake runner always succeeds. */
+  runs: string[];
   deps: ReturnType<typeof createDeps>;
 }
 
@@ -41,12 +43,19 @@ export function repo(options: { minAppVersion?: string; tagged?: boolean } = {})
   if (options.tagged !== false) git("tag", "-a", "0.1.1", "-m", "0.1.1");
 
   const messages: string[] = [];
+  const runs: string[] = [];
   const deps = createDeps(dir);
   deps.log = (message: string) => messages.push(message);
+  // The gates run npm, tsc, audit and commitlint. Tests must not start those inside a temporary repository.
+  deps.run = (command: string, args: string[]) => {
+    runs.push([command, ...args].join(" "));
+    return { ok: true, output: "" };
+  };
   return {
     dir,
     git,
     messages,
+    runs,
     deps,
     commit: (subject, body) => git("commit", "-q", "--allow-empty", "-m", subject, ...(body ? ["-m", body] : [])),
     tag: (name) => git("tag", "-a", name, "-m", name),
@@ -58,7 +67,8 @@ export function repo(options: { minAppVersion?: string; tagged?: boolean } = {})
  * as the real generator does. Any other command succeeds and does nothing.
  */
 export function withFakeChangelog(r: Repo): void {
-  r.deps.run = (_command: string, args: string[]) => {
+  r.deps.run = (command: string, args: string[]) => {
+    r.runs.push([command, ...args].join(" "));
     if (args.includes("changelog")) {
       const version = JSON.parse(r.deps.readText("package.json")).version;
       r.deps.writeText("CHANGELOG.md", `## ${version} (2026-01-01)\n\n### Features\n\n* a thing\n`);
