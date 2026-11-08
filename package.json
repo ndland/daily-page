@@ -16,7 +16,7 @@
     "release:check": "node scripts/check-versions.mjs",
     "release:prepare": "node scripts/release-prepare.mjs",
     "commit": "czg",
-    "changelog": "conventional-changelog -p conventionalcommits -i CHANGELOG.md -r 0",
+    "changelog": "conventional-changelog -p conventionalcommits -i CHANGELOG.md -r 0 --skip-unstable",
     "prepare": "husky"
   },
   "keywords": [],
