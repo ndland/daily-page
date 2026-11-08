@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, MAX_QUOTE_TEXT, normaliseSettings } from "../src/logic/settings";
 import { DEFAULT_DAILY_PATTERN } from "../src/logic/paths";
+import { DEFAULT_TAG_COLOURS } from "../src/defaults";
 
 const quote = { date: "2026-11-06", text: "Hi", author: "A" };
 
@@ -64,5 +65,23 @@ describe("normaliseSettings: values", () => {
   it("uses the defaults for anything that is not an object", () => {
     expect(normaliseSettings("not settings").settings).toEqual(DEFAULT_SETTINGS);
     expect(normaliseSettings(null).settings).toEqual(DEFAULT_SETTINGS);
+  });
+});
+
+describe("tag colours that were never changed", () => {
+  const FIRST = "work #8be9fd\ndeep #ff79c6";
+
+  it("move up to the current defaults, and are saved that way", () => {
+    const { settings, migrated } = normaliseSettings({ tagColours: FIRST });
+    expect(settings.tagColours).toBe(DEFAULT_TAG_COLOURS);
+    expect(migrated).toBe(true);
+  });
+
+  it("keep anything the reader wrote", () => {
+    const mine = "work #112233\ndeep #ff79c6";
+    const { settings, migrated } = normaliseSettings({ tagColours: mine });
+    expect(settings.tagColours).toBe(mine);
+    expect(migrated).toBe(false);
+    expect(normaliseSettings({ tagColours: "" }).settings.tagColours).toBe("");
   });
 });
