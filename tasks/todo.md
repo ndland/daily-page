@@ -103,7 +103,7 @@ Every task also meets the standing bar: `npm test` and `npx tsc --noEmit` pass, 
 
 ## Phase 4: Docs and go-live (each step asks first)
 
-- [ ] **T11: Docs** (S)
+- [x] **T11: Docs** (S)
   - Acceptance: the README has a "Releasing" section (prepare, push, publish the draft, the beta flow, BRAT update, what to do when a gate fails); `SPEC-release.md` status is updated; the Development section lists the new commands.
   - Verify: every command in the README runs as written in this repo (`--dry-run` for the release ones).
   - Files: `README.md`, `SPEC-release.md`.

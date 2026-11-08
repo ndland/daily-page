@@ -1,6 +1,6 @@
 # SPEC: Release pipeline
 
-Status: **decisions confirmed, awaiting approval of the whole spec.** No pipeline code has been written. Framework claims were checked against official sources on 2026-11-08 (section 12).
+Status: **approved and built through task T11** (commands, gates, both workflows, docs). Not yet run live: the Node 26 CI run, the tag repair (T12), the beta dry run (T13) and the first release (T14) are pending, and each needs the maintainer's OK. Framework claims were checked against official sources on 2026-11-08 (section 12).
 Scope: how Daily Page is versioned, gated, built and published so BRAT (and later the Obsidian community directory) can install it. The plugin's own spec is `SPEC.md`; this file does not change it.
 Builds on: the conventional-commit rules and changelog generator on branch `chore/commit-tooling` (`commitlint.config.mjs`, `npm run changelog`).
 
