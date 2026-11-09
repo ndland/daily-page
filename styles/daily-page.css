@@ -966,3 +966,36 @@
     padding-bottom: 0 !important;
   }
 }
+
+/* Inline markdown in the page text. Nothing here changes the line height or the size, so the text stays on the grid. */
+.daily-page mark {
+  background: color-mix(in srgb, var(--dp-accent) 35%, transparent);
+  color: inherit;
+  padding: 0;
+}
+
+.daily-page code {
+  font: inherit;
+  padding: 0 0.2em;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  border-radius: 2px;
+}
+
+.daily-page a {
+  color: var(--dp-accent);
+  text-decoration: underline;
+}
+
+.daily-page__wikilink {
+  color: var(--dp-accent);
+}
+
+/* A tag in the text is drawn as in the timeline, not as a pill, even when Obsidian renders the text. */
+.daily-page a.tag {
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  text-decoration: none;
+}

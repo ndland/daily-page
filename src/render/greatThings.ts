@@ -1,5 +1,6 @@
 import { GREAT_THINGS_HEADING, GREAT_THINGS_LIMIT, findSection } from "../entries/format";
 import { makeClickable } from "./access";
+import { TextRenderer, renderInline } from "./markdown";
 
 export { GREAT_THINGS_HEADING, GREAT_THINGS_LIMIT };
 
@@ -37,6 +38,7 @@ export function renderGreatThings(
   parent: HTMLElement,
   items: GreatThing[],
   onEdit?: (item: GreatThing) => void,
+  renderText: TextRenderer = renderInline,
 ): void {
   const box = document.createElement("section");
   box.className = "daily-page__great";
@@ -57,7 +59,7 @@ export function renderGreatThings(
     const shown = items.slice(0, GREAT_THINGS_LIMIT);
     for (const item of shown) {
       const row = document.createElement("li");
-      row.textContent = item.text;
+      renderText(row, item.text);
       if (onEdit) makeClickable(row, () => onEdit(item));
       list.appendChild(row);
     }

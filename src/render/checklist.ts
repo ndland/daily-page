@@ -1,5 +1,6 @@
 import { CHECKLIST_HEADING, CHECKLIST_LIMIT, CHECKLIST_LINE, findSection } from "../entries/format";
 import { makeClickable } from "./access";
+import { TextRenderer, renderInline } from "./markdown";
 
 export interface ChecklistItem {
   text: string;
@@ -47,6 +48,7 @@ export function renderChecklist(
   items: ChecklistItem[],
   onToggle?: (item: ChecklistItem, checked: boolean) => void,
   onAdd?: () => void,
+  renderText: TextRenderer = renderInline,
 ): void {
   const list = document.createElement("ul");
   list.className = "daily-page__checklist";
@@ -60,9 +62,9 @@ export function renderChecklist(
     if (onToggle) {
       makeClickable(box, () => onToggle(item, true), "checkbox");
       box.setAttribute("aria-checked", "false");
-      box.setAttribute("aria-label", `Finish ${item.text}`);
     }
-    text.textContent = item.text;
+    renderText(text, item.text);
+    if (onToggle) box.setAttribute("aria-label", `Finish ${text.textContent}`);
     list.appendChild(row);
   }
   if (overflow) {

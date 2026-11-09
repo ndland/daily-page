@@ -1,6 +1,7 @@
 import {
   App,
   MarkdownPostProcessorContext,
+  MarkdownRenderer,
   Modal,
   Notice,
   Plugin,
@@ -31,6 +32,7 @@ import { QuoteStore, pruneQuotes } from "./logic/quoteCache";
 import { renderPage } from "./render/page";
 import type { QuoteText } from "./render/quote";
 import { keepFitted } from "./render/fit";
+import { richTextRenderer } from "./render/richText";
 import { resolveReadOnly } from "./logic/readOnly";
 import { PageEditor, READ_ONLY_MESSAGE, reasonOf } from "./vault/editFlow";
 import { NoteCreator } from "./vault/noteCreator";
@@ -440,6 +442,14 @@ export default class DailyPagePlugin extends Plugin {
 
     renderPage(el, lines.slice(scope.start, scope.end), new Date(), quote, {
       date: noteDay,
+      // Obsidian draws the text, so links, highlights and the theme match the rest of the vault.
+      renderText: richTextRenderer(
+        (markdown, into) => MarkdownRenderer.render(this.app, markdown, into, sourcePath, this),
+        () => {
+          const page = el.querySelector<HTMLElement>(".daily-page");
+          if (page) keepFitted(page);
+        },
+      ),
       accent: this.settings.accentColor,
       tagColours: parseTagColours(this.settings.tagColours),
       handlers: {

@@ -2,6 +2,7 @@ import { ActivityEntry, NoteEntry, TimelineLine } from "../entries/format";
 import { MINUTES_PER_DAY, formatTime } from "../logic/time";
 import { colourForLabel } from "../logic/tags";
 import { makeClickable } from "./access";
+import { TextRenderer, renderInline } from "./markdown";
 
 /** The visual axis runs from 06:00 down to 03:00 the next day: 21 hours. */
 export const AXIS_START = 6 * 60;
@@ -219,6 +220,7 @@ export function renderBlocks(
   blocks: PositionedBlock[],
   onEdit?: (block: PositionedBlock) => void,
   onPlan?: (minute: number) => void,
+  renderText: TextRenderer = renderInline,
 ): void {
   // A tap on empty timeline, not on a block, plans a block at that time.
   if (onPlan) {
@@ -246,7 +248,8 @@ export function renderBlocks(
       // The text is its own element too, so a note that wraps lines up under its first line, not under the time.
       const text = document.createElement("span");
       text.className = "daily-page__note-text";
-      text.textContent = ` ${block.label}`;
+      text.append(" ");
+      renderText(text, block.label);
       el.append(time, text);
       if (block.outOfAxis) el.classList.add("daily-page__out-of-axis");
       if (onEdit) makeClickable(el, () => onEdit(block));
@@ -264,11 +267,12 @@ export function renderBlocks(
     // Short blocks keep their colour strip at part width, and their label sits to the right.
     if (block.heightPct < SHORT_BLOCK_PCT) el.classList.add("is-short");
     // The text wraps when the block is narrow. The full label is also on hover.
-    const full = `${block.timeText}  ${block.label}`;
-    el.title = full;
     const label = document.createElement("span");
     label.className = "daily-page__block-label";
-    label.textContent = full;
+    label.append(`${block.timeText}  `);
+    renderText(label, block.label);
+    // The tooltip is the label as plain text, without markdown marks.
+    el.title = label.textContent ?? "";
     el.appendChild(label);
     if (onEdit) makeClickable(el, () => onEdit(block));
     timelineEl.appendChild(el);

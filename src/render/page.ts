@@ -7,6 +7,7 @@ import { QuoteText, renderQuote } from "./quote";
 import { renderDoneList } from "./done";
 import { renderTagLegend } from "./legend";
 import { GreatThing, readGreatThings, renderGreatThings } from "./greatThings";
+import type { TextRenderer } from "./markdown";
 
 function sameCalendarDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -42,6 +43,8 @@ export interface PageOptions {
    * old note keeps its own day. Defaults to `now`. Running activities always use `now`.
    */
   date?: Date;
+  /** How the page's own text is drawn. Defaults to the built-in inline markdown; Obsidian passes its own renderer. */
+  renderText?: TextRenderer;
 }
 
 /** Draws the whole daily page into `root`, replacing anything already there. */
@@ -62,7 +65,7 @@ export function renderPage(
   const noteDay = options.date ?? now;
   renderDateBlock(top, noteDay);
   const topRight = el("div", "daily-page__top-right", top);
-  renderChecklist(topRight, checklist, options.handlers?.onToggle, options.handlers?.onAddTodo);
+  renderChecklist(topRight, checklist, options.handlers?.onToggle, options.handlers?.onAddTodo, options.renderText);
 
   const body = el("div", "daily-page__body", page);
   const hours = el("div", "daily-page__hours", body);
@@ -75,7 +78,7 @@ export function renderPage(
   el("div", "daily-page__divider", body);
   // The notes column opens with the three things box, and the timed notes sit below it.
   const notesEl = el("div", "daily-page__notes", body);
-  renderGreatThings(notesEl, readGreatThings(noteLines), options.handlers?.onEditGreatThing);
+  renderGreatThings(notesEl, readGreatThings(noteLines), options.handlers?.onEditGreatThing, options.renderText);
   const notesArea = el("div", "daily-page__notes-area", notesEl);
 
   const timeline = readTimeline(noteLines);
@@ -88,12 +91,13 @@ export function renderPage(
     layoutTimeline(timeline, isToday ? minutesOfDay(now) : DAY_END_MINUTE, options.tagColours ?? {}),
     onEdit && ((block) => onEdit(block, isToday)),
     options.handlers?.onPlan,
+    options.renderText,
   );
 
   const footer = el("div", "daily-page__footer", page);
   const footerLeft = el("div", "daily-page__footer-left", footer);
   // Finished todos sit at the foot of the notes column, where the empty space is.
-  renderDoneList(notesEl, checklist);
+  renderDoneList(notesEl, checklist, options.renderText);
   // The bottom row of the footer: the quote's credit, with the tag legend on the same line when there is room.
   const metaRow = el("div", "daily-page__footer-meta");
   renderQuote(footerLeft, quote, metaRow);

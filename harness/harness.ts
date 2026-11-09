@@ -10,9 +10,9 @@ import type { StoredQuote } from "../src/logic/quoteCache";
 const sampleNote = [
   "## Timeline",
   "- 09:00-10:15 Email #work",
-  "- 09:40 note: idea for the proposal",
+  "- 09:40 note: idea for the *proposal*",
   "- 10:15-12:00 Proposal draft #work",
-  "- 12:00-13:00 Lunch",
+  "- 12:00-13:00 The scan was _so_ much **faster** than `before` #health",
   "- 13:00-13:30 Review notes",
   "- 13:30-13:45 Quick call (15 min) #work",
   "- 13:45-14:15 Standup (30 min) #meeting",
