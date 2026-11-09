@@ -37,6 +37,8 @@ Click a block, a side note, a todo or a bullet in Three things to edit it. Click
 
 The todo list in the top right always shows five boxes, as the Hobonichi page does. Each open todo fills a box, and the rest stay empty. Tap an empty box to add a todo (or use Add todo). A finished todo moves to the Done line and frees its box, and more than five open todos show as "+N more".
 
+Any text you write on the page is read as markdown: `**bold**`, `*italic*` or `_italic_`, `~~strike~~`, `==highlight==`, `` `code` ``, `[links](https://example.com)` and `[[wikilinks]]`. In Obsidian the plugin hands the text to Obsidian's own renderer, so it looks like the rest of your vault. Where that is not available (the Dataview view and the test harness) a built-in reader handles the same marks.
+
 ## Planning your day
 
 A planned block is an ordinary closed entry such as `- 14:00-15:00 Review #meeting`. It may overlap other entries or lie in the past, and it never counts as the running activity. Plan one by tapping an empty spot on the timeline (the dialog starts at the time you tapped), or with the Plan a block command (it starts at the next half hour). The Plan a block command is the keyboard route, since tapping needs a mouse or a touch screen. After 23:15 it suggests 23:30, so a plan stays at the end of today. To begin a planned block, click it and choose Start now (a label you changed in the dialog is kept, and the button is not offered on a past day's note, where the clock's time does not belong): it becomes the running activity, and any other running activity ends at that minute.
