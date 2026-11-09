@@ -34,7 +34,7 @@ import { keepFitted } from "./render/fit";
 import { resolveReadOnly } from "./logic/readOnly";
 import { PageEditor, READ_ONLY_MESSAGE, reasonOf } from "./vault/editFlow";
 import { NoteCreator } from "./vault/noteCreator";
-import { openBlockEditor, openGreatThingEditor, openPlanDialog } from "./vault/editor";
+import { openBlockEditor, openGreatThingEditor, openPlanDialog, openTodoDialog } from "./vault/editor";
 
 
 type LogAction = (timeline: TimelineLine[], now: number) => LogOutcome;
@@ -456,6 +456,7 @@ export default class DailyPagePlugin extends Plugin {
           : (minute) => this.whenWritable(() => openPlanDialog(minute, (edit) => void this.editFile(sourcePath, edit))),
         onEditGreatThing: (item) =>
           this.whenWritable(() => openGreatThingEditor(item, (edit) => void this.editFile(sourcePath, edit))),
+        onAddTodo: () => this.whenWritable(() => openTodoDialog((edit) => void this.editFile(sourcePath, edit))),
       },
     });
     // Size the page to the window once it is on screen, and again on every resize.

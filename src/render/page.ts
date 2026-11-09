@@ -5,6 +5,7 @@ import { ChecklistItem, readChecklist, renderChecklist } from "./checklist";
 import { DAY_END_MINUTE, PositionedBlock, hourMarks, layoutTimeline, renderBlocks } from "./timeline";
 import { QuoteText, renderQuote } from "./quote";
 import { renderDoneList } from "./done";
+import { renderTagLegend } from "./legend";
 import { GreatThing, readGreatThings, renderGreatThings } from "./greatThings";
 
 function sameCalendarDay(a: Date, b: Date): boolean {
@@ -26,6 +27,8 @@ export interface PageHandlers {
   /** A tap on an empty spot of the timeline, with the minute of the day it is at. */
   onPlan?: (minute: number) => void;
   onEditGreatThing?: (item: GreatThing) => void;
+  /** A tap on an empty box in the todo list. */
+  onAddTodo?: () => void;
 }
 
 export interface PageOptions {
@@ -59,7 +62,7 @@ export function renderPage(
   const noteDay = options.date ?? now;
   renderDateBlock(top, noteDay);
   const topRight = el("div", "daily-page__top-right", top);
-  renderChecklist(topRight, checklist, options.handlers?.onToggle);
+  renderChecklist(topRight, checklist, options.handlers?.onToggle, options.handlers?.onAddTodo);
 
   const body = el("div", "daily-page__body", page);
   const hours = el("div", "daily-page__hours", body);
@@ -91,6 +94,10 @@ export function renderPage(
   const footerLeft = el("div", "daily-page__footer-left", footer);
   // Finished todos sit at the foot of the notes column, where the empty space is.
   renderDoneList(notesEl, checklist);
-  renderQuote(footerLeft, quote);
+  // The bottom row of the footer: the quote's credit, with the tag legend on the same line when there is room.
+  const metaRow = el("div", "daily-page__footer-meta");
+  renderQuote(footerLeft, quote, metaRow);
+  renderTagLegend(metaRow, options.tagColours ?? {});
+  footerLeft.appendChild(metaRow);
   renderMiniCalendar(footer, noteDay);
 }

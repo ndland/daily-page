@@ -25,16 +25,28 @@ export function readChecklist(noteLines: string[]): ChecklistItem[] {
   return items;
 }
 
+/** A row of the list: a box, then a second element for the todo's text, or for the line of an empty row. */
+function checklistRow(): [row: HTMLLIElement, box: HTMLElement, second: HTMLElement] {
+  const row = document.createElement("li");
+  const box = document.createElement("span");
+  box.className = "daily-page__box";
+  const second = document.createElement("span");
+  row.append(box, second);
+  return [row, box, second];
+}
+
 /**
  * Renders the open todos into `parent`, one row each. Finished todos leave these rows and are
  * listed in the Done line instead (see renderDoneList). Open todos are capped at CHECKLIST_LIMIT
  * when added, so they fit; past the limit, the last row says how many are not shown. Clicking a
- * box calls `onToggle` with the new state, which is always "finished".
+ * box calls `onToggle` with the new state, which is always "finished". Rows with no todo are drawn as empty
+ * boxes, and clicking one calls `onAdd`.
  */
 export function renderChecklist(
   parent: HTMLElement,
   items: ChecklistItem[],
   onToggle?: (item: ChecklistItem, checked: boolean) => void,
+  onAdd?: () => void,
 ): void {
   const list = document.createElement("ul");
   list.className = "daily-page__checklist";
@@ -44,17 +56,13 @@ export function renderChecklist(
   const overflow = open.length > CHECKLIST_LIMIT;
   const shown = overflow ? open.slice(0, CHECKLIST_LIMIT - 1) : open;
   for (const item of shown) {
-    const row = document.createElement("li");
-    const box = document.createElement("span");
-    box.className = "daily-page__box";
+    const [row, box, text] = checklistRow();
     if (onToggle) {
       makeClickable(box, () => onToggle(item, true), "checkbox");
       box.setAttribute("aria-checked", "false");
       box.setAttribute("aria-label", `Finish ${item.text}`);
     }
-    const text = document.createElement("span");
     text.textContent = item.text;
-    row.append(box, text);
     list.appendChild(row);
   }
   if (overflow) {
@@ -62,6 +70,19 @@ export function renderChecklist(
     more.className = "daily-page__checklist-more";
     more.textContent = `+${open.length - shown.length} more`;
     list.appendChild(more);
+  }
+  // As on the Hobonichi page, the list is always CHECKLIST_LIMIT rows: the todos, then empty boxes to fill in.
+  // Tapping an empty row adds a todo.
+  for (let blank = shown.length + (overflow ? 1 : 0); blank < CHECKLIST_LIMIT; blank++) {
+    const [row, , line] = checklistRow();
+    row.className = "daily-page__checklist-blank";
+    line.className = "daily-page__todo-line";
+    if (onAdd) {
+      makeClickable(row, onAdd);
+      // The row has no text, so name the button for a screen reader.
+      row.setAttribute("aria-label", "Add a todo");
+    }
+    list.appendChild(row);
   }
 
   parent.appendChild(list);

@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readTimeline, writeTimeline } from "../src/entries/format";
 import type { ScopeEdit } from "../src/entries/edit";
-import { openBlockEditor, openPlanDialog } from "../src/vault/editor";
+import { openBlockEditor, openPlanDialog, openTodoDialog } from "../src/vault/editor";
 import type { PositionedBlock } from "../src/render/timeline";
 
 const runningDraft: PositionedBlock = {
@@ -70,6 +70,27 @@ describe("openPlanDialog", () => {
     document.querySelector<HTMLButtonElement>(".daily-page__dialog-save")!.click();
     const outcome = save.mock.calls[0][0](["## Timeline"], 0);
     expect(outcome).toEqual({ ok: true, lines: ["## Timeline", "- 14:00-14:30 Review #meeting"] });
+  });
+});
+
+describe("openTodoDialog", () => {
+  it("asks for a todo, and saves what was typed as an open todo", () => {
+    const save = vi.fn<(edit: ScopeEdit) => void>();
+    openTodoDialog(save);
+    expect(document.querySelector(".daily-page__dialog")?.textContent).toContain("New todo");
+
+    document.querySelector<HTMLInputElement>(".daily-page__dialog input")!.value = "Buy milk";
+    document.querySelector<HTMLButtonElement>(".daily-page__dialog-save")!.click();
+    const outcome = save.mock.calls[0][0](["## Checklist"], 0);
+    expect(outcome).toEqual({ ok: true, lines: ["## Checklist", "- [ ] Buy milk"] });
+  });
+
+  it("refuses blank text, so no empty todo is written", () => {
+    const save = vi.fn<(edit: ScopeEdit) => void>();
+    openTodoDialog(save);
+    document.querySelector<HTMLButtonElement>(".daily-page__dialog-save")!.click();
+    const outcome = save.mock.calls[0]?.[0](["## Checklist"], 0);
+    expect(outcome).toEqual({ ok: false, message: "Enter the todo's text." });
   });
 });
 

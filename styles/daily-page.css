@@ -264,6 +264,18 @@
   color: var(--dp-fg);
 }
 
+/* An empty row to fill in: a box and a faint line, as many as there are todos short of the limit. Its height
+   matches a row with text, so the list does not change size as todos are added. */
+.daily-page .daily-page__checklist li.daily-page__checklist-blank {
+  min-height: calc(0.85rem * 1.15);
+}
+
+.daily-page__todo-line {
+  flex: 1 1 auto;
+  align-self: flex-end;
+  border-bottom: 1px dotted var(--dp-line);
+}
+
 .daily-page__box {
   display: inline-block;
   width: 0.8rem;
@@ -352,6 +364,8 @@
 
 /* Graph-paper grid: one line per hour, sized as a share of the timeline's height. */
 .daily-page__timeline {
+  /* The space a block's band keeps around its label's text, besides its 3px edge: 0.6rem before, 0.5rem after. */
+  --dp-band-pad: 1.1rem;
   background-image: repeating-linear-gradient(
     to bottom,
     var(--dp-line) 0 1px,
@@ -394,7 +408,11 @@
 .daily-page__block {
   position: absolute;
   left: 0.25rem;
-  right: 0.25rem;
+  box-sizing: border-box;
+  /* Every block's band, tall or short, is the same width: the longest label on one line (src/render/timeline.ts
+     publishes it as --dp-band-text) plus the band's padding and edge, and never wider than the timeline. Until
+     it is measured, the band is the whole timeline. */
+  width: min(calc(var(--dp-band-text, 100%) + var(--dp-band-pad) + 3px), calc(100% - 0.5rem));
   display: flex;
   align-items: center;
   overflow: visible;
@@ -406,23 +424,17 @@
   border-left: 3px solid var(--dp-block-accent, var(--dp-accent));
 }
 
-/* Short blocks: a strip at part width, with the label starting just inside its left edge, so the text sits
-   close to the timeline like text on a page, and is always readable in full. */
-.daily-page__block.is-short {
-  right: 70%;
-  overflow: visible;
-}
-
+/* Short blocks: the label sits just inside the band's left edge, so the text sits close to the timeline like text
+   on a page. The plugin moves it up or down to keep neighbouring labels apart. It wraps at the band's right edge
+   and is never cut short. */
 .daily-page__block.is-short .daily-page__block-label {
   position: absolute;
   left: 0.6rem;
   top: 50%;
   transform: translateY(-50%);
   flex: none;
-  /* The label stops at the timeline's right edge (the block takes 30% of the width, so the label
-     has 233% of the block less the gap). A longer label wraps there. It is never cut short. */
   width: max-content;
-  max-width: calc(233.3% - 0.5rem);
+  max-width: calc(100% - var(--dp-band-pad));
   white-space: normal;
   overflow-wrap: anywhere;
   line-height: 1.1;
@@ -434,6 +446,13 @@
   flex: 1 1 auto;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+/* While the plugin measures the labels, each one takes the width of its text on one line. */
+.daily-page__timeline.is-measuring .daily-page__block-label {
+  flex: none;
+  max-width: none;
+  white-space: nowrap;
 }
 
 .daily-page__block.is-running {
@@ -488,6 +507,19 @@
   align-items: center;
   justify-content: center;
   text-align: center;
+}
+
+/* The tag legend: one chip per tag, in the tag's colour, wrapping onto more rows when there are many. */
+.daily-page__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.65rem;
+}
+
+.daily-page__legend-tag {
+  padding-left: 0.4rem;
+  border-left: 3px solid var(--dp-block-accent);
 }
 
 /* Finished todos at the foot of the notes column: a small list that wraps to fit. */
@@ -553,10 +585,18 @@
   color: var(--dp-fg);
 }
 
-/* Small, in the bottom left of the quote's space. */
-.daily-page__attribution {
-  align-self: flex-start;
+/* The bottom row of the footer, at the bottom left of the quote's space: the quote's credit, with the tag legend
+   after it on the same line when there is room, and on the next line when there is not. */
+.daily-page__footer-meta {
+  align-self: stretch;
   margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+}
+
+.daily-page__attribution {
   font-size: 0.65rem;
   text-align: left;
   color: var(--dp-fg);
@@ -698,6 +738,17 @@
     grid-template-rows: auto auto auto;
   }
 
+  /* The footer stacks: the quote, its credit and the tags take the full width, and the calendar sits under them,
+     centred. Side by side, the quote and tags had only half the width and wrapped to many rows. */
+  .daily-page__footer {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+
+  .daily-page__footer-left {
+    justify-self: stretch;
+  }
+
   .daily-page__top {
     grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
   }
@@ -806,18 +857,6 @@
     white-space: normal;
     overflow: visible;
     line-height: 1.1;
-  }
-
-  /* A short block keeps its strip at the left, and its label has the rest of the row. */
-  .daily-page__block.is-short {
-    right: 80%;
-  }
-
-  .daily-page__block.is-short .daily-page__block-label {
-    /* The block takes 20% of the width here, so the label has up to 500% of the block, less the gap, and wraps there. */
-    max-width: calc(500% - 0.5rem);
-    white-space: normal;
-    overflow: visible;
   }
 }
 

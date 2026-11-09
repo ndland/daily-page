@@ -3,7 +3,7 @@ import { keepFitted } from "../src/render/fit";
 import { DEFAULT_TAG_COLOURS } from "../src/defaults";
 import { parseTagColours } from "../src/logic/tags";
 import { setChecklistItem, type ScopeEdit } from "../src/entries/edit";
-import { openBlockEditor, openGreatThingEditor, openPlanDialog } from "../src/vault/editor";
+import { openBlockEditor, openGreatThingEditor, openPlanDialog, openTodoDialog } from "../src/vault/editor";
 import type { StoredQuote } from "../src/logic/quoteCache";
 
 /** The same sample day as the test vault, so the harness matches what you see in Obsidian. */
@@ -11,13 +11,13 @@ const sampleNote = [
   "## Timeline",
   "- 09:00-10:15 Email #work",
   "- 09:40 note: idea for the proposal",
-  "- 10:15-12:00 Proposal draft #deep",
+  "- 10:15-12:00 Proposal draft #work",
   "- 12:00-13:00 Lunch",
   "- 13:00-13:30 Review notes",
   "- 13:30-13:45 Quick call (15 min) #work",
-  "- 13:45-14:15 Standup (30 min) #deep",
+  "- 13:45-14:15 Standup (30 min) #meeting",
   "- 15:00-15:15 Call with Sam (15 min) #work",
-  "- 15:15-15:30 Check email (15 min) #deep",
+  "- 15:15-15:30 Check email (15 min) #admin",
   "- 15:30-15:45 Quick review (15 min) #work",
   "- 14:29 note: I'm testing this out.",
   "",
@@ -66,7 +66,7 @@ const longNote = [
 ];
 
 /** A day with an activity still running, to try Start now and the running-activity rules. */
-const runningNote = ["## Timeline", "- 09:00-10:00 Email #work", "- 13:00- Writing the release notes #deep", "", "## Checklist", "", "## Three things"];
+const runningNote = ["## Timeline", "- 09:00-10:00 Email #work", "- 13:00- Writing the release notes #work", "", "## Checklist", "", "## Three things"];
 
 const params = new URLSearchParams(location.search);
 /** Side notes of every length, to see how wrapped notes line up, space out and sit apart. ?note=notes */
@@ -106,6 +106,7 @@ function draw(): void {
       onEdit: (block, isToday) => openBlockEditor(block, apply, { canStart: isToday }),
       onEditGreatThing: (item) => openGreatThingEditor(item, apply),
       onPlan: (minute) => openPlanDialog(minute, apply),
+      onAddTodo: () => openTodoDialog(apply),
     },
   });
   const page = host.querySelector<HTMLElement>(".daily-page");

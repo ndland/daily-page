@@ -5,7 +5,7 @@ import { renderChecklist, readChecklist } from "../src/render/checklist";
 const openFive = ["## Checklist", ...Array.from({ length: 5 }, (_, i) => `- [ ] Task ${i + 1}`)];
 
 function rowTexts(parent: HTMLElement): string[] {
-  return [...parent.querySelectorAll(".daily-page__checklist li")].map((li) => li.textContent ?? "");
+  return [...parent.querySelectorAll(".daily-page__checklist li:not(.daily-page__checklist-blank)")].map((li) => li.textContent ?? "");
 }
 
 describe("checklist display", () => {

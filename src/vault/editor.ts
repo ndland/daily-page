@@ -1,4 +1,4 @@
-import { editGreatThing, editNoteText, editTimelineEntry, type LineRef, type ScopeEdit } from "../entries/edit";
+import { appendChecklistItem, editGreatThing, editNoteText, editTimelineEntry, type LineRef, type ScopeEdit } from "../entries/edit";
 import { planBlock, startPlannedBlock } from "../entries/log";
 import { MINUTES_PER_DAY, formatTime } from "../logic/time";
 import type { GreatThing } from "../render/greatThings";
@@ -75,6 +75,13 @@ export function openPlanDialog(start: number, save: (edit: ScopeEdit) => void): 
       save((scope) => planBlock(scope, { label, start: startText, end: endText }));
     },
   );
+}
+
+/** Opens the dialog for a new todo, from tapping an empty box on the page. */
+export function openTodoDialog(save: (edit: ScopeEdit) => void): void {
+  openFieldsDialog("New todo", [{ label: "Todo", value: "" }], ([text]) => {
+    save((scope) => appendChecklistItem(scope, text));
+  });
 }
 
 /** Opens the editor for one bullet of the Three things box. Blank text removes it. */

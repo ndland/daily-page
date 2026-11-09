@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderPage } from "../src/render/page";
+import { renderQuote } from "../src/render/quote";
 
 const note = [
   "## Timeline",
@@ -21,7 +22,7 @@ describe("renderPage", () => {
     const page = root.querySelector(".daily-page");
     expect(page).not.toBeNull();
     expect(page!.querySelector(".daily-page__date")).not.toBeNull();
-    expect(page!.querySelectorAll(".daily-page__checklist li")).toHaveLength(1);
+    expect(page!.querySelectorAll(".daily-page__checklist li:not(.daily-page__checklist-blank)")).toHaveLength(1);
     expect(page!.querySelector(".daily-page__done")).not.toBeNull();
     expect(page!.querySelectorAll(".daily-page__hour-label")).toHaveLength(8);
     expect(page!.querySelector(".daily-page__divider")).not.toBeNull();
@@ -87,6 +88,73 @@ describe("renderPage", () => {
     expect(page.style.getPropertyValue("--dp-accent")).toBe("#ff79c6");
   });
 
+  it("passes a tap on an empty todo box to the page's handler", () => {
+    const onAddTodo = vi.fn();
+    const root = document.createElement("div");
+    renderPage(root, note, new Date(2026, 10, 6, 11, 0), null, { handlers: { onAddTodo } });
+    root.querySelector<HTMLElement>(".daily-page__checklist-blank")!.click();
+    expect(onAddTodo).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the empty todo boxes untappable when the page has no handler for them", () => {
+    const root = document.createElement("div");
+    renderPage(root, note, new Date(2026, 10, 6, 11, 0), null);
+    expect(root.querySelector(".daily-page__checklist-blank")!.classList.contains("is-clickable")).toBe(false);
+  });
+});
+
+describe("the footer row of credit and tags", () => {
+  const quote = { text: "Keep going", author: "Someone" };
+  const colours = { work: "#8be9fd", home: "#ff79c6" };
+  const draw = (q: typeof quote | null, tagColours?: Record<string, string>): HTMLElement => {
+    const root = document.createElement("div");
+    renderPage(root, [], new Date(2026, 10, 6, 8, 0), q, { tagColours });
+    return root;
+  };
+
+  it("puts the quote, then one row with the credit and then the tags", () => {
+    const left = draw(quote, colours).querySelector(".daily-page__footer-left")!;
+    expect([...left.children].map((child) => child.className)).toEqual(["daily-page__quote", "daily-page__footer-meta"]);
+    const row = left.querySelector(".daily-page__footer-meta")!;
+    expect([...row.children].map((child) => child.className)).toEqual(["daily-page__attribution", "daily-page__legend"]);
+  });
+
+  it("lists the tags in the order of the settings", () => {
+    const chips = [...draw(quote, colours).querySelectorAll(".daily-page__legend-tag")];
+    expect(chips.map((chip) => chip.textContent)).toEqual(["#work", "#home"]);
+  });
+
+  it("shows the tags without a quote, and the credit without tags", () => {
+    expect(draw(null, colours).querySelector(".daily-page__footer-meta .daily-page__legend")).not.toBeNull();
+    expect(draw(null, colours).querySelector(".daily-page__attribution")).toBeNull();
+    const credit = draw(quote);
+    expect(credit.querySelector(".daily-page__footer-meta .daily-page__attribution")).not.toBeNull();
+    expect(credit.querySelector(".daily-page__legend")).toBeNull();
+  });
+});
+
+describe("renderQuote's credit", () => {
+  const quote = { text: "Keep going", author: "Someone" };
+
+  it("goes beside the quote by default", () => {
+    const parent = document.createElement("div");
+    renderQuote(parent, quote);
+    expect([...parent.children].map((child) => child.className)).toEqual([
+      "daily-page__quote",
+      "daily-page__attribution",
+    ]);
+  });
+
+  it("goes into the row it is given, apart from the quote", () => {
+    const parent = document.createElement("div");
+    const row = document.createElement("div");
+    renderQuote(parent, quote, row);
+    expect([...parent.children].map((child) => child.className)).toEqual(["daily-page__quote"]);
+    expect([...row.children].map((child) => child.className)).toEqual(["daily-page__attribution"]);
+  });
+});
+
+describe("renderPage, again", () => {
   it("replaces the previous page when rendered again", () => {
     const root = document.createElement("div");
     renderPage(root, note, new Date(2026, 10, 6, 11, 0), null);

@@ -23,12 +23,37 @@ export const SHORT_BLOCK_PCT = 2.8;
 export const LABEL_GAP_PX = 18;
 
 /**
+ * Makes every block's colour band, tall or short, the same width: as wide as the longest label on one line. The
+ * stylesheet adds the band's padding and caps it at the timeline's width. The labels are measured in one pass:
+ * a class on the timeline makes each one unwrapped and unstretched, so all the widths come from a single layout.
+ */
+function equalizeBlockWidths(timelineEl: HTMLElement): void {
+  timelineEl.classList.add("is-measuring");
+  const widest = Math.max(
+    0,
+    ...[...timelineEl.querySelectorAll<HTMLElement>(".daily-page__block-label")].map(
+      (label) => label.getBoundingClientRect().width,
+    ),
+  );
+  timelineEl.classList.remove("is-measuring");
+
+  // Written only when it changes, so a resize that leaves the text as wide as before costs no layout.
+  const width = widest === 0 ? "" : `${Math.ceil(widest)}px`;
+  if (timelineEl.style.getPropertyValue("--dp-band-text") !== width) {
+    // An empty value removes the property, which puts the band back to the whole timeline.
+    timelineEl.style.setProperty("--dp-band-text", width);
+  }
+}
+
+/**
  * Moves short labels apart so none overlap. Labels are placed in time order, each at least
  * LABEL_GAP_PX below the one before. Measured in pixels, so it needs the timeline laid out.
  */
 export function spreadShortLabels(timelineEl: HTMLElement): void {
   const height = timelineEl.clientHeight;
   if (height === 0) return;
+
+  equalizeBlockWidths(timelineEl);
 
   const items = [...timelineEl.querySelectorAll<HTMLElement>(".daily-page__block.is-short")]
     .map((block) => {
