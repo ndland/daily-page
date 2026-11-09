@@ -1,4 +1,4 @@
-import { DEFAULT_ACCENT, DEFAULT_TAG_COLOURS, FIRST_TAG_COLOURS } from "../defaults";
+import { DEFAULT_ACCENT, DEFAULT_TAG_COLOURS, PREVIOUS_TAG_COLOURS } from "../defaults";
 import { DEFAULT_DAILY_PATTERN, isSafeVaultPath } from "./paths";
 import type { StoredQuote } from "./quoteCache";
 
@@ -74,7 +74,7 @@ export function normaliseSettings(loaded: unknown): NormalisedSettings {
     : DEFAULT_ACCENT;
   const saved = typeof raw.tagColours === "string" ? raw.tagColours : DEFAULT_TAG_COLOURS;
   // Colours the reader never changed move up to the current defaults, and are saved that way.
-  const upgraded = saved.trim().replace(/\r\n/g, "\n") === FIRST_TAG_COLOURS;
+  const upgraded = PREVIOUS_TAG_COLOURS.includes(saved.trim().replace(/\r\n/g, "\n"));
   const tags = upgraded ? DEFAULT_TAG_COLOURS : saved;
   const template = typeof raw.templatePath === "string" && isSafeVaultPath(raw.templatePath) ? raw.templatePath : "";
 

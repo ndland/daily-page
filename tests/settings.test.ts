@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, MAX_QUOTE_TEXT, normaliseSettings } from "../src/logic/settings";
 import { DEFAULT_DAILY_PATTERN } from "../src/logic/paths";
-import { DEFAULT_TAG_COLOURS } from "../src/defaults";
+import { DEFAULT_TAG_COLOURS, PREVIOUS_TAG_COLOURS } from "../src/defaults";
 
 const quote = { date: "2026-11-06", text: "Hi", author: "A" };
 
@@ -70,11 +70,58 @@ describe("normaliseSettings: values", () => {
 
 describe("tag colours that were never changed", () => {
   const FIRST = "work #8be9fd\ndeep #ff79c6";
+  const SECOND = [
+    "work #8be9fd",
+    "deep #ff79c6",
+    "meeting #ffb86c",
+    "admin #f1fa8c",
+    "health #50fa7b",
+    "family #ff5555",
+    "rest #6272a4",
+  ].join("\n");
 
   it("move up to the current defaults, and are saved that way", () => {
     const { settings, migrated } = normaliseSettings({ tagColours: FIRST });
     expect(settings.tagColours).toBe(DEFAULT_TAG_COLOURS);
     expect(migrated).toBe(true);
+  });
+
+  it("move up from the second set of defaults too, which had deep and no home", () => {
+    const { settings, migrated } = normaliseSettings({ tagColours: SECOND });
+    expect(settings.tagColours).toBe(DEFAULT_TAG_COLOURS);
+    expect(settings.tagColours).toContain("home #ff79c6");
+    expect(migrated).toBe(true);
+  });
+
+  it("move up from either set when it was saved with Windows line endings or stray blank space", () => {
+    for (const saved of [FIRST + "\n", "  " + SECOND + "\n", SECOND.replace(/\n/g, "\r\n"), FIRST.replace("\n", "\r\n")]) {
+      const { settings, migrated } = normaliseSettings({ tagColours: saved });
+      expect(settings.tagColours, JSON.stringify(saved)).toBe(DEFAULT_TAG_COLOURS);
+      expect(migrated).toBe(true);
+    }
+  });
+
+  it("leave the current defaults alone, so loading them again changes nothing", () => {
+    const { settings, migrated } = normaliseSettings({ tagColours: DEFAULT_TAG_COLOURS });
+    expect(settings.tagColours).toBe(DEFAULT_TAG_COLOURS);
+    expect(migrated).toBe(false);
+  });
+
+  it("keep the second set with a tag added, or in another order", () => {
+    for (const mine of [SECOND + "\nlearn #bd93f9", SECOND.split("\n").reverse().join("\n")]) {
+      const { settings, migrated } = normaliseSettings({ tagColours: mine });
+      expect(settings.tagColours).toBe(mine);
+      expect(migrated).toBe(false);
+    }
+  });
+
+  it("never list the current defaults as an earlier set, which would upgrade them for ever", () => {
+    expect(PREVIOUS_TAG_COLOURS).not.toContain(DEFAULT_TAG_COLOURS);
+  });
+
+  it("keep the second set when the reader changed a colour in it", () => {
+    const mine = SECOND.replace("#ff5555", "#111111");
+    expect(normaliseSettings({ tagColours: mine }).settings.tagColours).toBe(mine);
   });
 
   it("keep anything the reader wrote", () => {

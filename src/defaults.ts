@@ -7,18 +7,29 @@
 export const DEFAULT_ACCENT = "#bd93f9";
 
 /**
- * The tag colours the plugin started with. A saved setting that is exactly this was never changed by the reader,
- * so it moves up to the current defaults. Anything else the reader wrote is kept.
+ * The tag colours earlier versions started with. A saved setting that is exactly one of these was never changed
+ * by the reader, so it moves up to the current defaults. Anything else the reader wrote is kept.
  */
-export const FIRST_TAG_COLOURS = "work #8be9fd\ndeep #ff79c6";
+export const PREVIOUS_TAG_COLOURS = [
+  "work #8be9fd\ndeep #ff79c6",
+  [
+    "work #8be9fd",
+    "deep #ff79c6",
+    "meeting #ffb86c",
+    "admin #f1fa8c",
+    "health #50fa7b",
+    "family #ff5555",
+    "rest #6272a4",
+  ].join("\n"),
+];
 
-/** One "tag #hex" pair per line. */
+/** One "tag #hex" pair per line. Seven categories for a day, one per Dracula colour that is not the accent. */
 export const DEFAULT_TAG_COLOURS = [
   "work #8be9fd",
-  "deep #ff79c6",
   "meeting #ffb86c",
   "admin #f1fa8c",
   "health #50fa7b",
+  "home #ff79c6",
   "family #ff5555",
   "rest #6272a4",
 ].join("\n");

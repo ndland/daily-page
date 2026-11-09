@@ -14,7 +14,7 @@ export function extractTags(label: string): string[] {
 /**
  * Parses settings text such as:
  *   work #8be9fd
- *   deep #ff79c6
+ *   home #ff79c6
  * Each line gives a tag and a six-digit hex colour. Lines that do not match are ignored.
  */
 export function parseTagColours(text: string): Record<string, string> {
