@@ -35,6 +35,8 @@ With BRAT, run its update check. From a build, run `npm run release` or `npm run
 
 Click a block, a side note, a todo or a bullet in Three things to edit it. Click a todo's box to finish it.
 
+The todo list in the top right always shows five boxes, as the Hobonichi page does. Each open todo fills a box, and the rest stay empty. Tap an empty box to add a todo (or use Add todo). A finished todo moves to the Done line and frees its box, and more than five open todos show as "+N more".
+
 ## Planning your day
 
 A planned block is an ordinary closed entry such as `- 14:00-15:00 Review #meeting`. It may overlap other entries or lie in the past, and it never counts as the running activity. Plan one by tapping an empty spot on the timeline (the dialog starts at the time you tapped), or with the Plan a block command (it starts at the next half hour). The Plan a block command is the keyboard route, since tapping needs a mouse or a touch screen. After 23:15 it suggests 23:30, so a plan stays at the end of today. To begin a planned block, click it and choose Start now (a label you changed in the dialog is kept, and the button is not offered on a past day's note, where the clock's time does not belong): it becomes the running activity, and any other running activity ends at that minute.
@@ -43,7 +45,9 @@ A page with a running activity redraws once a minute, so its block keeps up with
 
 ## Tag colours
 
-Put a tag such as `#work` in a label and the block takes that tag's colour. The first tag in a label that has a colour wins. Set the colours in the plugin settings, one `tag #hex` per line. The defaults use the Dracula palette (work, deep, meeting, admin, health, family, rest), and Reset to defaults puts them back. A setting still at the original two colours (work and deep) is upgraded to the new defaults when the plugin loads, and a setting you changed is kept. When the plugin is on, the Dataview view uses these settings too.
+Put a tag such as `#work` in a label and the block takes that tag's colour. The first tag in a label that has a colour wins. Set the colours in the plugin settings, one `tag #hex` per line. The defaults use the Dracula palette (work, meeting, admin, health, home, family, rest: seven everyday categories), and Reset to defaults puts them back. A setting still at an earlier default (the original two colours, or the second set with deep) is upgraded to the new defaults when the plugin loads, and a setting you changed is kept. When the plugin is on, the Dataview view uses these settings too.
+
+The footer lists your tags in their colours, on the line of the quote's credit, so you can see what to type after an activity. It shows whatever is in the tag colours setting. Moving to the new defaults swaps `#deep` for `#home`, so a block still labelled `#deep` in an older note shows in the plain accent colour. To keep its colour, add `deep #ff79c6` to the tag colours setting.
 
 ## Quotes
 
