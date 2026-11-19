@@ -10,7 +10,7 @@
  */
 import { renderPage } from "../render/page";
 import { keepFitted } from "../render/fit";
-import { setChecklistItem, type ScopeEdit } from "../entries/edit";
+import { setChecklistItem, setChecklistStatus, type ScopeEdit } from "../entries/edit";
 import { MULTIPLE_BLOCKS, NO_PAGE_MESSAGE, countDailyPageBlocks, scopeOf } from "../logic/scope";
 import { parseTagColours } from "../logic/tags";
 import { storedQuoteFromSettings } from "../logic/quoteCache";
@@ -96,13 +96,12 @@ async function draw(liveText?: string): Promise<void> {
     return;
   }
   const lines = source.split(/\r?\n/);
-  dv.container.replaceChildren();
   if (countDailyPageBlocks(lines) > 1) {
     // A notice that stays, since nothing else on the page would explain the empty view.
     const notice = document.createElement("div");
     notice.className = "daily-page__message";
     notice.textContent = MULTIPLE_BLOCKS;
-    dv.container.appendChild(notice);
+    dv.container.replaceChildren(notice);
     return;
   }
   const scope = scopeOf(lines);
@@ -110,7 +109,7 @@ async function draw(liveText?: string): Promise<void> {
     const notice = document.createElement("div");
     notice.className = "daily-page__message";
     notice.textContent = NO_PAGE_MESSAGE;
-    dv.container.appendChild(notice);
+    dv.container.replaceChildren(notice);
     return;
   }
 
@@ -124,6 +123,9 @@ async function draw(liveText?: string): Promise<void> {
       onToggle: (item, checked) => {
         void editNote(path, (scope) => setChecklistItem(scope, item, checked));
       },
+      onChecklistStatus: app.plugins?.plugins?.[PLUGIN_ID]?.isReadOnly?.()
+        ? undefined
+        : (item, status) => void editNote(path, (scope) => setChecklistStatus(scope, item, status)),
       onEdit: (block, isToday) => openBlockEditor(block, (edit) => void editNote(path, edit), { canStart: isToday }),
       onPlan: (minute) => openPlanDialog(minute, (edit) => void editNote(path, edit)),
       onEditGreatThing: (item) => openGreatThingEditor(item, (edit) => void editNote(path, edit)),

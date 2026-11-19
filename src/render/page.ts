@@ -1,4 +1,4 @@
-import { readTimeline } from "../entries/format";
+import { readTimeline, type ChecklistStatus } from "../entries/format";
 import { minutesOfDay } from "../logic/time";
 import { renderDateBlock, renderMiniCalendar } from "./dateBlock";
 import { ChecklistItem, readChecklist, renderChecklist } from "./checklist";
@@ -23,6 +23,7 @@ function el(tag: string, className: string, parent?: HTMLElement): HTMLElement {
 /** What happens when the reader clicks something on the page. */
 export interface PageHandlers {
   onToggle?: (item: ChecklistItem, checked: boolean) => void;
+  onChecklistStatus?: (item: ChecklistItem, status: Exclude<ChecklistStatus, "done">) => void;
   /** A click on a block. `isToday` is false on a past day's note, where "now" is not the note's time. */
   onEdit?: (block: PositionedBlock, isToday: boolean) => void;
   /** A tap on an empty spot of the timeline, with the minute of the day it is at. */
@@ -55,6 +56,8 @@ export function renderPage(
   quote: QuoteText | null,
   options: PageOptions = {},
 ): void {
+  const active = root.ownerDocument.activeElement;
+  const focused = active instanceof HTMLElement && root.contains(active) ? active : undefined;
   root.replaceChildren();
   const page = el("div", "daily-page", root);
   if (options.accent) page.style.setProperty("--dp-accent", options.accent);
@@ -65,7 +68,11 @@ export function renderPage(
   const noteDay = options.date ?? now;
   renderDateBlock(top, noteDay);
   const topRight = el("div", "daily-page__top-right", top);
-  renderChecklist(topRight, checklist, options.handlers?.onToggle, options.handlers?.onAddTodo, options.renderText);
+  const { onToggle, onAddTodo, onChecklistStatus } = options.handlers ?? {};
+  renderChecklist(
+    topRight, checklist, onToggle, onAddTodo, options.renderText,
+    onChecklistStatus && ((item) => onChecklistStatus(item, "cancelled")),
+  );
 
   const body = el("div", "daily-page__body", page);
   const hours = el("div", "daily-page__hours", body);
@@ -96,12 +103,22 @@ export function renderPage(
 
   const footer = el("div", "daily-page__footer", page);
   const footerLeft = el("div", "daily-page__footer-left", footer);
-  // Finished todos sit at the foot of the notes column, where the empty space is.
-  renderDoneList(notesEl, checklist, options.renderText);
+  renderDoneList(notesEl, checklist, options.renderText, onChecklistStatus && ((item) => onChecklistStatus(item, "open")));
   // The bottom row of the footer: the quote's credit, with the tag legend on the same line when there is room.
   const metaRow = el("div", "daily-page__footer-meta");
   renderQuote(footerLeft, quote, metaRow);
   renderTagLegend(metaRow, options.tagColours ?? {});
   footerLeft.appendChild(metaRow);
   renderMiniCalendar(footer, noteDay);
+
+  if (focused?.dataset.cancelIndex !== undefined) {
+    const cancels = [...topRight.querySelectorAll<HTMLElement>("[data-cancel-index]")];
+    const index = Number(focused.dataset.cancelIndex);
+    const next = cancels.find((button) => Number(button.dataset.cancelIndex) >= index);
+    const add = topRight.querySelector<HTMLElement>('[aria-label="Add a todo"]');
+    (next ?? add ?? cancels[cancels.length - 1])?.focus({ preventScroll: true });
+  } else if (focused?.classList.contains("daily-page__cancelled-count")) {
+    const count = notesEl.querySelector<HTMLElement>(".daily-page__cancelled-count");
+    (count ?? topRight.querySelector<HTMLElement>('[role="checkbox"]'))?.focus({ preventScroll: true });
+  }
 }

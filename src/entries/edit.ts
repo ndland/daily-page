@@ -2,6 +2,8 @@ import {
   CHECKLIST_HEADING,
   CHECKLIST_LIMIT,
   CHECKLIST_LINE,
+  CHECKLIST_MARKERS,
+  type ChecklistStatus,
   GREAT_THINGS_HEADING,
   GREAT_THINGS_LIMIT,
   findSection,
@@ -131,37 +133,36 @@ export function editNoteText(scope: string[], expected: LineRef, text: string): 
 function openTodoCount(sectionLines: string[]): number {
   return sectionLines.filter((line) => {
     const match = CHECKLIST_LINE.exec(line);
-    return match !== null && match[1] === " ";
+    return match?.[1] === CHECKLIST_MARKERS.open;
   }).length;
 }
 
 function limitReached(): EditOutcome {
-  return fail(`The checklist already has ${CHECKLIST_LIMIT} open todos. Finish or remove one first.`);
+  return fail(`The checklist already has ${CHECKLIST_LIMIT} open todos. Finish, cancel, or remove one first.`);
 }
 
-/**
- * Ticks or unticks a checklist item. Unticking makes it open again, so it is refused when the
- * checklist already holds the open-todo limit, just as adding one would be.
- */
 export function setChecklistItem(scope: string[], expected: LineRef, checked: boolean): EditOutcome {
+  return setChecklistStatus(scope, expected, checked ? "done" : "open");
+}
+
+/** Changes the task's marker at its original line. Reopening requires a free slot. */
+export function setChecklistStatus(scope: string[], expected: LineRef, status: ChecklistStatus): EditOutcome {
   const section = findSection(scope, CHECKLIST_HEADING);
   if (!section) return fail(STALE);
 
   const body = scope.slice(section.start, section.end);
   const match = CHECKLIST_LINE.exec(expected.raw);
   if (!match) return fail(STALE);
-  const ticked = `- [${checked ? "x" : " "}] ${match[2]}`;
+  const updated = `- [${CHECKLIST_MARKERS[status]}] ${match[2]}`;
 
-  // A repeat of a tick that already happened (a double click, say) changes nothing. It is not an
-  // error, because the todo is already in the state the reader asked for.
-  if (body[expected.index] === ticked) return { ok: true, lines: scope };
+  // A repeat click may arrive after the task already reached the requested state.
+  if (body[expected.index] === updated) return { ok: true, lines: scope };
   if (body[expected.index] !== expected.raw) return fail(STALE);
 
-  const wasChecked = match[1].toLowerCase() === "x";
-  if (wasChecked && !checked && openTodoCount(body) >= CHECKLIST_LIMIT) return limitReached();
+  if (status === "open" && openTodoCount(body) >= CHECKLIST_LIMIT) return limitReached();
 
   const lineIndex = section.start + expected.index;
-  return { ok: true, lines: scope.map((line, i) => (i === lineIndex ? ticked : line)) };
+  return { ok: true, lines: scope.map((line, i) => (i === lineIndex ? updated : line)) };
 }
 
 /**

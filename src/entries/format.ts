@@ -34,11 +34,14 @@ export interface TimelineIssue {
 const TIMELINE_HEADING = "## Timeline";
 export const CHECKLIST_HEADING = "## Checklist";
 
-/** The most todos a checklist holds. Adding a todo beyond this is refused. */
+/** The most open todos a checklist holds. */
 export const CHECKLIST_LIMIT = 5;
 
-/** A checklist line: the box ("x" or "X" when ticked) and the todo's text. */
-export const CHECKLIST_LINE = /^- \[( |x|X)\] (.+)$/;
+export const CHECKLIST_MARKERS = { open: " ", done: "x", cancelled: "-" } as const;
+export type ChecklistStatus = keyof typeof CHECKLIST_MARKERS;
+
+/** A checklist line: its status marker and the todo's text. */
+export const CHECKLIST_LINE = /^- \[([ xX-])\] (.+)$/;
 
 export const GREAT_THINGS_HEADING = "## Three things";
 

@@ -1,6 +1,6 @@
 import type { TFile, Vault } from "obsidian";
 import { describe, expect, it } from "vitest";
-import { appendChecklistItem, setChecklistItem } from "../src/entries/edit";
+import { appendChecklistItem, setChecklistItem, setChecklistStatus } from "../src/entries/edit";
 import { PageEditor, editPage, undoPage } from "../src/vault/editFlow";
 import { UndoSlot } from "../src/vault/noteEdit";
 import { WriteQueue } from "../src/vault/writeQueue";
@@ -138,6 +138,24 @@ describe("PageEditor ordering", () => {
     expect(undone).toBe("Undid the last edit.");
     expect(vault.content).toContain("- [ ] Read");
     expect(vault.content).not.toContain("- [ ] Water");
+  });
+});
+
+describe("cancellation writes", () => {
+  const cancel = (scope: string[]) => setChecklistStatus(scope, { raw: "- [ ] Walk", index: 0 }, "cancelled");
+
+  it("is refused on read-only devices and can be undone once written", async () => {
+    const vault = new FakeVault(NOTE);
+    let readOnly = true;
+    const pages = new PageEditor(vault.asVault(), () => NOW, () => readOnly);
+    expect(await pages.edit(FILE, cancel)).toMatch(/read.only/i);
+    expect(vault.content).toBe(NOTE);
+
+    readOnly = false;
+    expect(await pages.edit(FILE, cancel)).toBeNull();
+    expect(vault.content).toContain("- [-] Walk");
+    expect(await pages.undo(() => FILE)).toBe("Undid the last edit.");
+    expect(vault.content).toBe(NOTE);
   });
 });
 

@@ -35,7 +35,7 @@ With BRAT, run its update check. From a build, run `npm run release` or `npm run
 
 Click a block, a side note, a todo or a bullet in Three things to edit it. Click a todo's box to finish it.
 
-The todo list in the top right always shows five boxes, as the Hobonichi page does. Each open todo fills a box, and the rest stay empty. Tap an empty box to add a todo (or use Add todo). A finished todo moves to the Done line and frees its box, and more than five open todos show as "+N more".
+The todo list in the top right always shows five boxes, as the Hobonichi page does. Each open todo fills a box, and the rest stay empty. Tap an empty box to add a todo (or use Add todo). A finished todo moves to the Done line and frees its box, and more than five open todos show as "+N more". Choose **Cancel** to free a slot and record the task in **Cancelled** history. Click the **Cancelled** count to view the full list and reopen a task when there is room. The cancelled status is stored as `- [-] Task` in the note.
 
 Any text you write on the page is read as markdown: `**bold**`, `*italic*` or `_italic_`, `~~strike~~`, `==highlight==`, `` `code` ``, `[links](https://example.com)` and `[[wikilinks]]`. In Obsidian the plugin hands the text to Obsidian's own renderer, so it looks like the rest of your vault. Where that is not available (the Dataview view and the test harness) a built-in reader handles the same marks.
 

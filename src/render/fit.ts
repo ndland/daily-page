@@ -126,6 +126,7 @@ function fitDoneList(notes: HTMLElement, unit: number): void {
   if (!done) return;
   const items = [...done.querySelectorAll<HTMLElement>(".daily-page__done-item")];
   const more = done.querySelector<HTMLElement>(".daily-page__done-more");
+  const heading = done.querySelector<HTMLElement>(".daily-page__done-heading");
 
   const great = notes.querySelector<HTMLElement>(".daily-page__great");
   // Two gaps (above and below the notes area) and the minimum notes space come off the column.
@@ -133,7 +134,8 @@ function fitDoneList(notes: HTMLElement, unit: number): void {
   // A finished todo that wraps takes more than one row, so each is measured with every row showing.
   for (const item of items) item.hidden = false;
   const rowsOf = items.map((item) => Math.max(1, Math.ceil(item.offsetHeight / unit)));
-  const layout = doneLayoutByRows(rowsOf, budget, unit);
+  const extraHeadingRows = Math.max(0, Math.ceil((heading?.offsetHeight ?? 0) / unit) - 1);
+  const layout = doneLayoutByRows(rowsOf, budget - extraHeadingRows * unit, unit);
   items.forEach((item, i) => {
     item.hidden = i >= layout.shown;
   });

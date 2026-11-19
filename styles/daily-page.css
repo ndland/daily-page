@@ -258,6 +258,38 @@
   line-height: 1.15;
 }
 
+.daily-page__todo-text {
+  flex: 1 1 auto;
+}
+
+.daily-page .daily-page__task-action {
+  appearance: none;
+  flex-shrink: 0;
+  min-height: 24px;
+  height: auto;
+  padding: 0 0.25rem;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--dp-fg);
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: inherit;
+  cursor: pointer;
+}
+
+.daily-page .daily-page__task-action:hover {
+  background: transparent;
+  color: var(--dp-accent);
+  text-decoration: underline;
+}
+
+.daily-page .daily-page__task-action:focus-visible {
+  outline: 2px solid var(--dp-accent);
+  outline-offset: 1px;
+}
+
 .daily-page .daily-page__checklist li.daily-page__checklist-more {
   font-size: 0.75rem;
   font-style: italic;
@@ -268,6 +300,10 @@
    matches a row with text, so the list does not change size as todos are added. */
 .daily-page .daily-page__checklist li.daily-page__checklist-blank {
   min-height: calc(0.85rem * 1.15);
+}
+
+.daily-page .daily-page__checklist.has-cancel-actions li {
+  min-height: 24px;
 }
 
 .daily-page__todo-line {
@@ -542,6 +578,20 @@
   letter-spacing: 0.08em;
 }
 
+.daily-page .daily-page__cancelled-count {
+  display: inline-block;
+  padding: 0;
+  vertical-align: baseline;
+  color: var(--dp-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.daily-page__done-label + .daily-page__cancelled-count {
+  margin-inline-start: 0.6em;
+}
+
 /* Finished todos are muted and struck through, with a tick in front, so they read as done at a glance. */
 .daily-page__done-item {
   color: var(--dp-done);
@@ -563,6 +613,15 @@
   text-indent: 0;
 }
 
+.daily-page__done-item.is-cancelled {
+  text-decoration-style: dashed;
+  text-decoration-color: currentColor;
+}
+
+.daily-page__done-item.is-cancelled::before {
+  content: "×";
+  content: "×" / "Cancelled: ";
+}
 
 /* The quote is the most prominent text in the footer. The auto top margin takes the spare
    height above it, so the quote is centred in the space above the attribution. */
@@ -637,7 +696,7 @@
 
 /* Three things and todos wrap when they do not fit on a line. Nothing on the page is cut short. */
 .daily-page .daily-page__great-list li,
-.daily-page .daily-page__checklist li > span:last-child {
+.daily-page .daily-page__checklist .daily-page__todo-text {
   min-width: 0;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -840,7 +899,7 @@
     align-items: flex-start;
   }
 
-  .daily-page .daily-page__checklist li > span:last-child {
+  .daily-page .daily-page__checklist .daily-page__todo-text {
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
@@ -884,6 +943,43 @@
 .daily-page__dialog h3 {
   margin: 0 0 0.75rem;
   font-size: 1rem;
+}
+
+.daily-page__cancelled-dialog {
+  max-height: min(80vh, 28rem);
+  overflow-y: auto;
+}
+
+.daily-page__cancelled-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.daily-page__cancelled-dialog-header,
+.daily-page__cancelled-dialog li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.daily-page__cancelled-dialog-header h3 {
+  margin: 0;
+}
+
+.daily-page__cancelled-dialog ul {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.daily-page__cancelled-dialog li {
+  padding: 0.25rem 0;
+  border-top: 1px solid var(--dp-line);
+}
+
+.daily-page__cancelled-dialog li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .daily-page__dialog-row {

@@ -1,10 +1,10 @@
-import { CHECKLIST_HEADING, CHECKLIST_LIMIT, CHECKLIST_LINE, findSection } from "../entries/format";
+import { CHECKLIST_HEADING, CHECKLIST_LIMIT, CHECKLIST_LINE, CHECKLIST_MARKERS, type ChecklistStatus, findSection } from "../entries/format";
 import { makeClickable } from "./access";
 import { TextRenderer, renderInline } from "./markdown";
 
 export interface ChecklistItem {
   text: string;
-  checked: boolean;
+  status: ChecklistStatus;
   /** The exact line as written in the note, used to check it is still the same line when editing. */
   raw: string;
   /** Position of the line within the Checklist section, used to find it again when editing. */
@@ -20,7 +20,9 @@ export function readChecklist(noteLines: string[]): ChecklistItem[] {
   noteLines.slice(section.start, section.end).forEach((line, index) => {
     const match = CHECKLIST_LINE.exec(line);
     if (match) {
-      items.push({ text: match[2], checked: match[1].toLowerCase() === "x", raw: line, index });
+      const marker = match[1];
+      const status = marker === CHECKLIST_MARKERS.open ? "open" : marker === CHECKLIST_MARKERS.cancelled ? "cancelled" : "done";
+      items.push({ text: match[2], status, raw: line, index });
     }
   });
   return items;
@@ -37,8 +39,8 @@ function checklistRow(): [row: HTMLLIElement, box: HTMLElement, second: HTMLElem
 }
 
 /**
- * Renders the open todos into `parent`, one row each. Finished todos leave these rows and are
- * listed in the Done line instead (see renderDoneList). Open todos are capped at CHECKLIST_LIMIT
+ * Renders the open todos into `parent`, one row each. Done and cancelled todos move to history.
+ * Open todos are capped at CHECKLIST_LIMIT
  * when added, so they fit; past the limit, the last row says how many are not shown. Clicking a
  * box calls `onToggle` with the new state, which is always "finished". Rows with no todo are drawn as empty
  * boxes, and clicking one calls `onAdd`.
@@ -49,22 +51,35 @@ export function renderChecklist(
   onToggle?: (item: ChecklistItem, checked: boolean) => void,
   onAdd?: () => void,
   renderText: TextRenderer = renderInline,
+  onCancel?: (item: ChecklistItem) => void,
 ): void {
   const list = document.createElement("ul");
   list.className = "daily-page__checklist";
+  list.classList.toggle("has-cancel-actions", Boolean(onCancel));
 
-  const open = items.filter((item) => !item.checked);
+  const open = items.filter((item) => item.status === "open");
   // Past the limit, the last row says how many are not shown, so no todo vanishes silently.
   const overflow = open.length > CHECKLIST_LIMIT;
   const shown = overflow ? open.slice(0, CHECKLIST_LIMIT - 1) : open;
   for (const item of shown) {
     const [row, box, text] = checklistRow();
+    text.className = "daily-page__todo-text";
     if (onToggle) {
       makeClickable(box, () => onToggle(item, true), "checkbox");
       box.setAttribute("aria-checked", "false");
     }
     renderText(text, item.text);
     if (onToggle) box.setAttribute("aria-label", `Finish ${text.textContent}`);
+    if (onCancel) {
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.className = "daily-page__task-action";
+      cancel.textContent = "Cancel";
+      cancel.setAttribute("aria-label", `Cancel ${text.textContent}`);
+      cancel.dataset.cancelIndex = String(item.index);
+      cancel.addEventListener("click", () => onCancel(item));
+      row.appendChild(cancel);
+    }
     list.appendChild(row);
   }
   if (overflow) {

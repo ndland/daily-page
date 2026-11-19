@@ -44,6 +44,6 @@ describe("appendChecklistItem", () => {
   it("the new todo is read back as an open item", () => {
     const result = appendChecklistItem(["## Checklist"], "Walk");
     const items = result.ok ? readChecklist(result.lines) : [];
-    expect(items).toEqual([{ text: "Walk", checked: false, raw: "- [ ] Walk", index: 0 }]);
+    expect(items).toEqual([{ text: "Walk", status: "open", raw: "- [ ] Walk", index: 0 }]);
   });
 });

@@ -2,7 +2,7 @@ import { renderPage } from "../src/render/page";
 import { keepFitted } from "../src/render/fit";
 import { DEFAULT_TAG_COLOURS } from "../src/defaults";
 import { parseTagColours } from "../src/logic/tags";
-import { setChecklistItem, type ScopeEdit } from "../src/entries/edit";
+import { setChecklistItem, setChecklistStatus, type ScopeEdit } from "../src/entries/edit";
 import { openBlockEditor, openGreatThingEditor, openPlanDialog, openTodoDialog } from "../src/vault/editor";
 import type { StoredQuote } from "../src/logic/quoteCache";
 
@@ -86,7 +86,21 @@ const notesNote = [
   "- Wrapped lines sit on consecutive grid lines",
 ];
 
-const modes: Record<string, string[]> = { empty: emptyNote, long: longNote, running: runningNote, notes: notesNote };
+const cancelNote = [
+  ...sampleNote.slice(0, sampleNote.indexOf("## Checklist")),
+  "## Checklist",
+  "- [x] Walk",
+  "- [ ] Download Notion",
+  "- [ ] Try Notion for a single page",
+  "- [ ] Evaluate Notion vs using Obsidian",
+  "",
+  "## Three things",
+  "- Walk outside before dinner",
+];
+
+const modes: Record<string, string[]> = {
+  empty: emptyNote, long: longNote, running: runningNote, notes: notesNote, cancel: cancelNote,
+};
 let lines = [...(modes[params.get("note") ?? ""] ?? sampleNote)];
 
 // A fixed moment, so screenshots and measurements are repeatable: 14:30.
@@ -103,6 +117,7 @@ function draw(): void {
     tagColours: parseTagColours(DEFAULT_TAG_COLOURS),
     handlers: {
       onToggle: (item, checked) => apply((scope) => setChecklistItem(scope, item, checked)),
+      onChecklistStatus: (item, status) => apply((scope) => setChecklistStatus(scope, item, status)),
       onEdit: (block, isToday) => openBlockEditor(block, apply, { canStart: isToday }),
       onEditGreatThing: (item) => openGreatThingEditor(item, apply),
       onPlan: (minute) => openPlanDialog(minute, apply),

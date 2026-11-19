@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appendChecklistItem, setChecklistItem } from "../src/entries/edit";
+import { STALE, appendChecklistItem, setChecklistItem, setChecklistStatus } from "../src/entries/edit";
 
 describe("checklist cap", () => {
   it("refuses to untick a finished todo into a sixth open one", () => {
@@ -41,5 +41,37 @@ describe("stale checklist clicks", () => {
     const result = setChecklistItem(after, { raw: "- [ ] Walk", index: 0 }, true);
     expect(before[1]).toBe("- [ ] Walk");
     expect(result.ok).toBe(false);
+  });
+});
+
+describe("cancelled todos", () => {
+  it("changes only the marker of the selected duplicate and can reopen it", () => {
+    const raw = "- [ ] Call *Mum*  ";
+    const scope = ["## Checklist", raw, "Keep this line", raw, "## Three things", "- Read"];
+    const expected = { raw, index: 2 };
+    const cancelled = setChecklistStatus(scope, expected, "cancelled");
+    const cancelledRaw = "- [-] Call *Mum*  ";
+    if (!cancelled.ok) throw new Error(cancelled.message);
+    expect(cancelled.lines).toEqual(["## Checklist", raw, "Keep this line", cancelledRaw, "## Three things", "- Read"]);
+    expect(setChecklistStatus(cancelled.lines, expected, "cancelled")).toEqual(cancelled);
+    expect(setChecklistStatus(cancelled.lines, { raw: cancelledRaw, index: 2 }, "open")).toEqual({ ok: true, lines: scope });
+  });
+
+  it("refuses to cancel a task that was edited or completed since rendering", () => {
+    const expected = { raw: "- [ ] Walk", index: 0 };
+    for (const line of ["- [ ] Run", "- [x] Walk"]) {
+      expect(setChecklistStatus(["## Checklist", line], expected, "cancelled")).toEqual({ ok: false, message: STALE });
+    }
+  });
+
+  it("frees a slot at the limit and keeps the task cancelled if its slot was filled", () => {
+    const scope = ["## Checklist", ...["One", "Two", "Three", "Four", "Five"].map((name) => `- [ ] ${name}`)];
+    const cancelled = setChecklistStatus(scope, { raw: "- [ ] One", index: 0 }, "cancelled");
+    if (!cancelled.ok) throw new Error(cancelled.message);
+    const added = appendChecklistItem(cancelled.lines, "Six");
+    if (!added.ok) throw new Error(added.message);
+    const reopened = setChecklistStatus(added.lines, { raw: "- [-] One", index: 0 }, "open");
+    expect(reopened).toEqual({ ok: false, message: expect.stringContaining("5 open todos") });
+    expect(added.lines[1]).toBe("- [-] One");
   });
 });
