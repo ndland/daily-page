@@ -45,7 +45,7 @@ export function openBlockEditor(
     },
     // A block that has ended can be started again now. A running one is already started. The label typed in the
     // dialog is kept, so a change made just before pressing Start now is not lost.
-    block.running || options.canStart === false
+    block.running || block.taskId || options.canStart === false
       ? []
       : [
           {

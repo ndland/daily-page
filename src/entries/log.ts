@@ -15,9 +15,9 @@ function fail(message: string): { ok: false; message: string } {
   return { ok: false, message };
 }
 
-function runningIndex(timeline: TimelineLine[]): number {
+function runningIndex(timeline: TimelineLine[], taskId?: string): number {
   return timeline.findIndex(
-    (line) => line.entry?.kind === "activity" && line.entry.end === null,
+    (line) => line.entry?.kind === "activity" && line.entry.end === null && line.entry.taskId === taskId,
   );
 }
 
@@ -39,7 +39,7 @@ function appendEntry(timeline: TimelineLine[], line: TimelineLine): TimelineLine
  * editor accepts. A same-minute log has nothing to end, so it gets its own message.
  */
 function endProblem(running: ActivityEntry, now: number): string | null {
-  if (now === running.start) return "The running activity started this minute. Log the next one a minute later.";
+  if (now === running.start) return "The running activity started this minute. Try again next minute.";
   // A span that crosses midnight is valid, so an activity from 23:30 can end at 00:10.
   if (isValidSpan(running.start, now)) return null;
   if (now < running.start) return "That time is earlier than the running activity's start.";
@@ -54,22 +54,22 @@ function endAt(timeline: TimelineLine[], index: number, now: number): TimelineLi
 }
 
 /**
- * Starts a new activity. Any running activity ends at `now`.
+ * Starts an activity. A regular log ends the previous regular activity. Checklist timers run in parallel.
  * Never mutates the input, so the caller can keep the previous timeline for undo.
  */
-export function logActivity(timeline: TimelineLine[], label: string, now: number): LogOutcome {
+export function logActivity(timeline: TimelineLine[], label: string, now: number, taskId?: string): LogOutcome {
   const text = cleanText(label);
   if (!text) return fail("Enter a label for the activity.");
 
   let next = timeline;
-  const index = runningIndex(timeline);
+  const index = taskId ? -1 : runningIndex(timeline);
   if (index !== -1) {
     const problem = endProblem(timeline[index].entry as ActivityEntry, now);
     if (problem) return fail(problem);
     next = endAt(timeline, index, now);
   }
 
-  const started = formatEntry({ kind: "activity", start: now, end: null, label: text });
+  const started = formatEntry({ kind: "activity", start: now, end: null, label: text, taskId });
   return succeed(appendEntry(next, toTimelineLine(started)));
 }
 
@@ -82,12 +82,21 @@ export function logNote(timeline: TimelineLine[], text: string, now: number): Lo
   return succeed(appendEntry(timeline, toTimelineLine(noted)));
 }
 
-/** Ends the running activity at `now` without starting another. */
-export function endRunning(timeline: TimelineLine[], now: number): LogOutcome {
-  const index = runningIndex(timeline);
+/** Ends a specific task timer, the regular activity, or the sole remaining task timer. */
+export function endRunning(timeline: TimelineLine[], now: number, taskId?: string): LogOutcome {
+  let index = runningIndex(timeline, taskId);
+  if (index === -1 && taskId === undefined) {
+    const tasks = timeline.flatMap(({ entry }, i) =>
+      entry?.kind === "activity" && entry.end === null && entry.taskId ? [i] : [],
+    );
+    if (tasks.length > 1) return fail("Several tasks are running. Choose a task's checkbox to stop its timer.");
+    index = tasks[0] ?? -1;
+  }
   if (index === -1) return fail("Nothing is running.");
 
-  const problem = endProblem(timeline[index].entry as ActivityEntry, now);
+  const running = timeline[index].entry as ActivityEntry;
+  // A checklist task can be done within the same minute it began.
+  const problem = running.taskId && running.start === now ? null : endProblem(running, now);
   if (problem) return fail(problem);
   return succeed(endAt(timeline, index, now));
 }
@@ -113,7 +122,7 @@ export function planBlock(scope: string[], edit: TimelineEdit): EditOutcome {
 
 /**
  * Starts a planned (closed) block now: it becomes the running activity, starting at `now`, with `label` when one
- * is given. Any other running activity ends at `now` first, so only one runs at a time.
+ * is given. Any regular running activity ends at `now` first. Task timers keep running.
  */
 export function startPlannedBlock(scope: string[], expected: LineRef, now: number, label?: string): EditOutcome {
   const timeline = readTimeline(scope);
@@ -132,7 +141,7 @@ export function startPlannedBlock(scope: string[], expected: LineRef, now: numbe
   // A label the reader changed in the dialog before pressing Start now is kept. A blank one keeps the old label.
   const newLabel = label === undefined ? "" : cleanText(label);
   const started = toTimelineLine(
-    formatEntry({ ...current.entry, start: now, end: null, label: newLabel || current.entry.label }),
+    formatEntry({ kind: "activity", start: now, end: null, label: newLabel || current.entry.label }),
   );
   return { ok: true, lines: writeTimeline(scope, next.map((line, i) => (i === expected.index ? started : line))) };
 }

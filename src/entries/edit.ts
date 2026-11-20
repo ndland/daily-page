@@ -93,7 +93,7 @@ export function editTimelineEntry(
   if (edit.end.trim() !== "") {
     end = parseTime(edit.end.trim());
     if (end === null) return fail("End time must be HH:MM, or blank for a running activity.");
-    if (!isValidSpan(start, end)) return fail(SPAN_RULE);
+    if (!isValidSpan(start, end) && !(current.entry.taskId && start === end)) return fail(SPAN_RULE);
   } else if (start !== minute && !isValidSpan(start, minute)) {
     // A running activity runs up to now, so its start must be within the last 12 hours. A start
     // in the future would draw a block nearly a whole day tall. A start of exactly now is fine:
@@ -101,9 +101,9 @@ export function editTimelineEntry(
     return fail(RUNNING_SPAN_RULE);
   }
 
-  const next = timeline.map((line, i) =>
-    i === expected.index ? toTimelineLine(formatEntry({ kind: "activity", start, end, label })) : line,
-  );
+  const taskId = current.entry.end === null || end !== null ? current.entry.taskId : undefined;
+  const updated = toTimelineLine(formatEntry({ kind: "activity", start, end, label, taskId }));
+  const next = timeline.map((line, i) => (i === expected.index ? updated : line));
 
   // Refuse only when this edit adds a second running activity. A timeline that already has
   // one must still be editable, so the reader can repair it.

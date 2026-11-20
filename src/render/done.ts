@@ -8,7 +8,7 @@ export function renderDoneList(
   renderText: TextRenderer = renderInline,
   onReopen?: (item: ChecklistItem) => void,
 ): void {
-  const history = items.filter((item) => item.status !== "open");
+  const history = items.filter((item) => item.status === "done" || item.status === "cancelled");
   if (history.length === 0) return;
   const cancelled = history.filter((item) => item.status === "cancelled");
   const doneCount = history.length - cancelled.length;
@@ -62,7 +62,7 @@ function cancelledDialog(
   onReopen?: (item: ChecklistItem) => void,
 ): HTMLDialogElement {
   const dialog = document.createElement("dialog");
-  dialog.className = "daily-page__dialog daily-page__cancelled-dialog";
+  dialog.className = "daily-page__dialog daily-page__task-dialog daily-page__cancelled-dialog";
   dialog.setAttribute("aria-label", "Cancelled tasks");
 
   const header = document.createElement("div");

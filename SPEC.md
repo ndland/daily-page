@@ -33,9 +33,9 @@ Plugin commands (available in Obsidian's command palette, with hotkeys you choos
 
 | Command | Behavior |
 | --- | --- |
-| Log activity | Prompts for a label, stamps the current time, ends the running activity at that time, and starts the new one. |
+| Log activity | Prompts for a label, stamps the current time, ends the previous regular activity, and starts the new one. Task timers keep running. |
 | Log side note | Prompts for text, stamps the current time, and adds the note. It does not change any activity's end time. |
-| End running activity | Stamps the current time as the running activity's end. Adds no new line. |
+| End running activity | Ends the regular activity or, when it is the only timer, the running checklist task. Adds no new line. |
 | Undo last log | Reverts the last edit to the page in this session (a log, a tick, or an edit), including the previous running activity's end time. It changes only the page's lines, so text outside the page is kept. If the page has changed since that edit, it refuses rather than revert the newer change. |
 
 ## 3. Project structure
@@ -140,19 +140,19 @@ The daily note holds two sections:
 ```
 
 - Closed activity: `- HH:MM-HH:MM Label`.
-- Running activity: `- HH:MM- Label`. At most one running activity per day.
+- Running activity: `- HH:MM- Label`. At most one regular activity and one timer per checklist task may run at once. Task timers can run in parallel.
 - Side note: `- HH:MM note: text`.
-- Checklist: plain markdown tasks. They can be typed by hand, added with the Add todo hotkey, or ticked by clicking the box.
+- Checklist: Markdown tasks. Click the box to mark a task done, start its timer, or cancel it. A task and its timeline blocks share a note-local ID stored in a trailing `<!-- daily-page:task:1 -->` comment.
 
 **Acceptance**
 - Parsing and then serializing a note returns it byte for byte.
 - A malformed line is kept as it is and flagged. It is never deleted.
-- A day with two running activities is flagged, not silently fixed.
+- Multiple running regular activities or duplicate running timers for one task are flagged.
 
 ### B. Logging hotkeys (depends on A)
 
 **Acceptance**
-- Log activity ends the running activity at the new stamp and adds the new one as running.
+- Log activity ends the previous regular activity at the new stamp and adds the new one as running.
 - Log side note adds a note line and changes no activity's end time.
 - End running activity sets the end time and adds no line.
 - Undo last log reverts the last edit to the page in this session, including the previous end time. Text outside the page is kept.
@@ -189,7 +189,7 @@ Note: `#6272A4` on `#282A36` has low contrast. Use it for lines and decoration o
 ### D. Timeline rendering (depends on A and C)
 
 - Each closed activity is drawn as a block from its start to its end on the hour axis.
-- A running activity is drawn from its start to the current time, with a visible running indicator.
+- A running activity is drawn from its start to the current time, with a visible running indicator. Overlapping activities with a task timer appear side by side.
 - Side notes sit in the notes column at their timestamp.
 - The hour axis runs 06 at the top to 03 at the bottom. It is a visual guide only and does not restrict entries.
 - Entries outside that range still render, marked as out of the axis.

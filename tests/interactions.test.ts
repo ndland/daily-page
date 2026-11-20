@@ -14,18 +14,23 @@ const note = [
 const now = new Date(2026, 10, 6, 11, 0);
 
 describe("clicks on the page", () => {
-  it("passes the exact checklist line, marked finished, when a box is clicked", () => {
+  it("passes the exact checklist line when Done is chosen from the task box", () => {
     const root = document.createElement("div");
-    const onToggle = vi.fn();
+    const onChecklistStatus = vi.fn();
     const open = ["## Checklist", "- [ ] Walk", "- [ ] Water"];
-    renderPage(root, open, now, null, { handlers: { onToggle } });
+    renderPage(root, open, now, null, { handlers: { onChecklistStatus } });
 
-    const boxes = root.querySelectorAll<HTMLElement>(".daily-page__checklist .daily-page__box");
-    boxes[0].click();
-    boxes[1].click();
+    const boxes = root.querySelectorAll<HTMLButtonElement>(".daily-page__status-box");
+    const dialog = root.querySelector("dialog")!;
+    dialog.showModal = vi.fn();
+    dialog.close = vi.fn();
+    for (const box of boxes) {
+      box.click();
+      dialog.querySelector("button")!.click();
+    }
 
-    expect(onToggle).toHaveBeenNthCalledWith(1, expect.objectContaining({ raw: "- [ ] Walk" }), true);
-    expect(onToggle).toHaveBeenNthCalledWith(2, expect.objectContaining({ raw: "- [ ] Water" }), true);
+    expect(onChecklistStatus).toHaveBeenNthCalledWith(1, expect.objectContaining({ raw: "- [ ] Walk" }), "done", true);
+    expect(onChecklistStatus).toHaveBeenNthCalledWith(2, expect.objectContaining({ raw: "- [ ] Water" }), "done", true);
   });
 
   it("passes the clicked activity with its line and index", () => {
@@ -60,7 +65,7 @@ describe("clicks on the page", () => {
     expect(plain.querySelector(".is-clickable")).toBeNull();
 
     const interactive = document.createElement("div");
-    renderPage(interactive, note, now, null, { handlers: { onEdit: () => {}, onToggle: () => {} } });
+    renderPage(interactive, note, now, null, { handlers: { onEdit: () => {}, onChecklistStatus: () => {} } });
     expect(interactive.querySelectorAll(".is-clickable").length).toBeGreaterThan(0);
   });
 });

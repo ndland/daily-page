@@ -1,5 +1,5 @@
 import { ActivityEntry, NoteEntry, TimelineLine } from "../entries/format";
-import { MINUTES_PER_DAY, formatTime } from "../logic/time";
+import { DAY_END_MINUTE, MINUTES_PER_DAY, formatTime } from "../logic/time";
 import { colourForLabel } from "../logic/tags";
 import { makeClickable } from "./access";
 import { TextRenderer, renderInline } from "./markdown";
@@ -8,8 +8,7 @@ import { TextRenderer, renderInline } from "./markdown";
 export const AXIS_START = 6 * 60;
 export const AXIS_MINUTES = 21 * 60;
 
-/** The minute of the day the axis ends at (03:00), where a running activity on a past day's note stops. */
-export const DAY_END_MINUTE = (AXIS_START + AXIS_MINUTES) % MINUTES_PER_DAY;
+export { DAY_END_MINUTE };
 
 /** Hour labels as they appear in the reference page, top to bottom. */
 const HOUR_LABELS = [6, 9, 12, 15, 18, 21, 0, 3];
@@ -65,16 +64,29 @@ export function spreadShortLabels(timelineEl: HTMLElement): void {
     .filter((item): item is typeof item & { label: HTMLElement } => item.label !== null)
     .sort((a, b) => a.centre - b.centre);
 
-  // A label that wraps is taller than one line, so two labels need half of each one's height between their centres.
-  const heights = items.map((item) => Math.max(LABEL_GAP_PX, item.label.offsetHeight));
-  const gapBetween = (i: number): number => (heights[i - 1] + heights[i]) / 2;
+  const rows: { group?: string; items: typeof items; centre: number; height: number }[] = [];
+  for (const item of items) {
+    const group = item.block.dataset.timelineGroup;
+    const lane = item.block.dataset.timelineLane;
+    const labelHeight = Math.max(LABEL_GAP_PX, item.label.offsetHeight);
+    const last = rows[rows.length - 1];
+    // Nearby labels can share a row when their blocks have separate horizontal lanes.
+    if (group && last?.group === group && item.centre - last.centre < LABEL_GAP_PX &&
+        last.items.every(({ block }) => block.dataset.timelineLane !== lane)) {
+      last.items.push(item);
+      last.height = Math.max(last.height, labelHeight);
+    } else {
+      rows.push({ group, items: [item], centre: item.centre, height: labelHeight });
+    }
+  }
+  const gapBetween = (i: number): number => (rows[i - 1].height + rows[i].height) / 2;
 
   // Push each label down until it clears the one before, then pull back any label that would run
   // past the bottom of the axis, from the bottom up, as the notes are laid out.
   const centres: number[] = [];
   let previous = -Infinity;
-  items.forEach((item, i) => {
-    previous = Math.max(item.centre, i === 0 ? -Infinity : previous + gapBetween(i));
+  rows.forEach((row, i) => {
+    previous = Math.max(row.centre, i === 0 ? -Infinity : previous + gapBetween(i));
     centres.push(previous);
   });
   let limit = height;
@@ -87,9 +99,11 @@ export function spreadShortLabels(timelineEl: HTMLElement): void {
     centres[i] = Math.min(Math.max(centres[i], 0), height);
   }
 
-  items.forEach((item, i) => {
-    // The label is positioned inside its block, so its offset is relative to the block's top.
-    item.label.style.top = `${centres[i] - item.top}px`;
+  rows.forEach((row, i) => {
+    for (const item of row.items) {
+      // The label is positioned inside its block, so its offset is relative to the block's top.
+      item.label.style.top = `${centres[i] - item.top}px`;
+    }
   });
 }
 
@@ -101,6 +115,9 @@ export interface PositionedBlock {
   topPct: number;
   heightPct: number;
   running: boolean;
+  taskId?: string;
+  /** A horizontal lane shared by activities with overlapping times. */
+  lane?: { index: number; count: number; group: number };
   /** True when the entry starts between 03:00 and 06:00, outside the visible axis. */
   outOfAxis: boolean;
   /** Highlight from the label's tag, or null to use the default accent. */
@@ -172,6 +189,7 @@ function activityBlock(
     topPct: toPercent(visibleStart),
     heightPct: toPercent(visibleEnd - visibleStart),
     running: entry.end === null,
+    ...(entry.taskId && { taskId: entry.taskId }),
     outOfAxis: startOffset > AXIS_MINUTES,
     colour: colourForLabel(entry.label, tagColours),
     index,
@@ -199,7 +217,40 @@ export function layoutTimeline(
         : activityBlock(entry, now, tagColours, index, line.raw),
     );
   });
+  assignTaskLanes(blocks);
   return blocks;
+}
+
+function assignTaskLanes(blocks: PositionedBlock[]): void {
+  if (!blocks.some((block) => block.taskId)) return;
+  const activities = blocks
+    .filter((block) => block.kind === "activity" && !block.outOfAxis)
+    .sort((first, second) => first.topPct - second.topPct || first.index - second.index);
+
+  // Reuse a lane once its activity ends. Only overlapping groups with a task timer need lanes.
+  let group: { block: PositionedBlock; index: number }[] = [];
+  let laneEnds: { minute: number; running: boolean }[] = [];
+  const finishGroup = (): void => {
+    if (laneEnds.length > 1 && group.some(({ block }) => block.taskId)) {
+      for (const { block, index } of group) block.lane = { index, count: laneEnds.length, group: group[0].block.index };
+    }
+    group = [];
+    laneEnds = [];
+  };
+
+  for (const block of activities) {
+    const start = Math.round(block.topPct * AXIS_MINUTES / 100);
+    const duration = Math.max(1, Math.round(block.heightPct * AXIS_MINUTES / 100));
+    // Two running blocks share the current minute, even at the instant the later timer starts.
+    const isAvailable = (end: { minute: number; running: boolean }): boolean =>
+      end.minute < start || (end.minute === start && !(end.running && block.running));
+    if (laneEnds.every(isAvailable)) finishGroup();
+    const available = laneEnds.findIndex(isAvailable);
+    const index = available === -1 ? laneEnds.length : available;
+    laneEnds[index] = { minute: start + duration, running: block.running };
+    group.push({ block, index });
+  }
+  finishGroup();
 }
 
 /** Hour labels at their positions on the axis. */
@@ -263,6 +314,13 @@ export function renderBlocks(
     if (block.outOfAxis) el.classList.add("daily-page__out-of-axis");
     el.style.top = `${block.topPct}%`;
     el.style.height = `${block.heightPct}%`;
+    if (block.lane) {
+      el.classList.add("is-concurrent");
+      el.dataset.timelineLane = String(block.lane.index);
+      el.dataset.timelineGroup = String(block.lane.group);
+      el.style.setProperty("--dp-lane-left", `${100 * block.lane.index / block.lane.count}%`);
+      el.style.setProperty("--dp-lane-width", `${100 / block.lane.count}%`);
+    }
     if (block.colour) el.style.setProperty("--dp-block-accent", block.colour);
     // Short blocks keep their colour strip at part width, and their label sits to the right.
     if (block.heightPct < SHORT_BLOCK_PCT) el.classList.add("is-short");

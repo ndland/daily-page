@@ -6,6 +6,8 @@ export interface ActivityEntry {
   start: number;
   end: number | null;
   label: string;
+  /** Note-local ID of the checklist item that started the timer. */
+  taskId?: string;
 }
 
 /** An instant side note. It never changes an activity's end time. */
@@ -39,9 +41,21 @@ export const CHECKLIST_LIMIT = 5;
 
 export const CHECKLIST_MARKERS = { open: " ", done: "x", cancelled: "-" } as const;
 export type ChecklistStatus = keyof typeof CHECKLIST_MARKERS;
+export type TaskStatus = ChecklistStatus | "in-progress";
 
 /** A checklist line: its status marker and the todo's text. */
 export const CHECKLIST_LINE = /^- \[([ xX-])\] (.+)$/;
+
+const TASK_LINK = /^(.*) <!-- daily-page:task:(\d+) -->$/;
+
+export function readTaskLink(text: string): { text: string; taskId?: string } {
+  const match = TASK_LINK.exec(text);
+  return match ? { text: match[1], taskId: match[2] } : { text };
+}
+
+export function writeTaskLink(text: string, taskId: string): string {
+  return `${text} <!-- daily-page:task:${taskId} -->`;
+}
 
 export const GREAT_THINGS_HEADING = "## Three things";
 
@@ -60,14 +74,14 @@ export function parseEntry(raw: string): Entry | null {
     const start = parseTime(closed[1]);
     const end = parseTime(closed[2]);
     if (start === null || end === null) return null;
-    return { kind: "activity", start, end, label: closed[3] };
+    return linkedActivity(start, end, closed[3]);
   }
 
   const running = ACTIVITY_RUNNING.exec(raw);
   if (running) {
     const start = parseTime(running[1]);
     if (start === null) return null;
-    return { kind: "activity", start, end: null, label: running[2] };
+    return linkedActivity(start, null, running[2]);
   }
 
   const note = NOTE.exec(raw);
@@ -80,15 +94,21 @@ export function parseEntry(raw: string): Entry | null {
   return null;
 }
 
+function linkedActivity(start: number, end: number | null, rawLabel: string): ActivityEntry {
+  const { text: label, taskId } = readTaskLink(rawLabel);
+  const activity: ActivityEntry = { kind: "activity", start, end, label };
+  if (taskId) activity.taskId = taskId;
+  return activity;
+}
+
 /** Writes an entry in the canonical line format. */
 export function formatEntry(entry: Entry): string {
   if (entry.kind === "note") {
     return `- ${formatTime(entry.time)} note: ${entry.text}`;
   }
-  if (entry.end === null) {
-    return `- ${formatTime(entry.start)}- ${entry.label}`;
-  }
-  return `- ${formatTime(entry.start)}-${formatTime(entry.end)} ${entry.label}`;
+  const end = entry.end === null ? "" : formatTime(entry.end);
+  const label = entry.taskId ? writeTaskLink(entry.label, entry.taskId) : entry.label;
+  return `- ${formatTime(entry.start)}-${end} ${label}`;
 }
 
 export function toTimelineLine(raw: string): TimelineLine {
@@ -140,16 +160,21 @@ export const RUNNING_CONFLICT = "More than one running activity";
 export function validateTimeline(timeline: TimelineLine[]): TimelineIssue[] {
   const issues: TimelineIssue[] = [];
   let runningSeen = false;
+  const runningTasks = new Set<string>();
 
   timeline.forEach((line, index) => {
     if (line.entry === null && line.raw.startsWith("- ")) {
       issues.push({ index, message: "Unrecognised entry; kept as written" });
     }
     if (line.entry?.kind === "activity" && line.entry.end === null) {
-      if (runningSeen) {
+      const { taskId } = line.entry;
+      if (taskId) {
+        if (runningTasks.has(taskId)) issues.push({ index, message: RUNNING_CONFLICT });
+        runningTasks.add(taskId);
+      } else if (runningSeen) {
         issues.push({ index, message: RUNNING_CONFLICT });
       }
-      runningSeen = true;
+      if (!taskId) runningSeen = true;
     }
   });
 

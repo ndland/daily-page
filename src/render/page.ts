@@ -1,4 +1,4 @@
-import { readTimeline, type ChecklistStatus } from "../entries/format";
+import { readTimeline, type TaskStatus } from "../entries/format";
 import { minutesOfDay } from "../logic/time";
 import { renderDateBlock, renderMiniCalendar } from "./dateBlock";
 import { ChecklistItem, readChecklist, renderChecklist } from "./checklist";
@@ -22,8 +22,7 @@ function el(tag: string, className: string, parent?: HTMLElement): HTMLElement {
 
 /** What happens when the reader clicks something on the page. */
 export interface PageHandlers {
-  onToggle?: (item: ChecklistItem, checked: boolean) => void;
-  onChecklistStatus?: (item: ChecklistItem, status: Exclude<ChecklistStatus, "done">) => void;
+  onChecklistStatus?: (item: ChecklistItem, status: TaskStatus, isToday: boolean) => void;
   /** A click on a block. `isToday` is false on a past day's note, where "now" is not the note's time. */
   onEdit?: (block: PositionedBlock, isToday: boolean) => void;
   /** A tap on an empty spot of the timeline, with the minute of the day it is at. */
@@ -63,15 +62,17 @@ export function renderPage(
   if (options.accent) page.style.setProperty("--dp-accent", options.accent);
 
   // The top row, as on the Hobonichi page: the date at the top left, the todos at the top right.
-  const checklist = readChecklist(noteLines);
+  const timeline = readTimeline(noteLines);
+  const checklist = readChecklist(noteLines, timeline);
   const top = el("div", "daily-page__top", page);
   const noteDay = options.date ?? now;
+  const isToday = sameCalendarDay(noteDay, now);
   renderDateBlock(top, noteDay);
   const topRight = el("div", "daily-page__top-right", top);
-  const { onToggle, onAddTodo, onChecklistStatus } = options.handlers ?? {};
+  const { onAddTodo, onChecklistStatus } = options.handlers ?? {};
   renderChecklist(
-    topRight, checklist, onToggle, onAddTodo, options.renderText,
-    onChecklistStatus && ((item) => onChecklistStatus(item, "cancelled")),
+    topRight, checklist, onChecklistStatus && ((item, status) => onChecklistStatus(item, status, isToday)),
+    onAddTodo, options.renderText, isToday,
   );
 
   const body = el("div", "daily-page__body", page);
@@ -88,8 +89,6 @@ export function renderPage(
   renderGreatThings(notesEl, readGreatThings(noteLines), options.handlers?.onEditGreatThing, options.renderText);
   const notesArea = el("div", "daily-page__notes-area", notesEl);
 
-  const timeline = readTimeline(noteLines);
-  const isToday = sameCalendarDay(noteDay, now);
   const onEdit = options.handlers?.onEdit;
   renderBlocks(
     timelineEl,
@@ -103,7 +102,7 @@ export function renderPage(
 
   const footer = el("div", "daily-page__footer", page);
   const footerLeft = el("div", "daily-page__footer-left", footer);
-  renderDoneList(notesEl, checklist, options.renderText, onChecklistStatus && ((item) => onChecklistStatus(item, "open")));
+  renderDoneList(notesEl, checklist, options.renderText, onChecklistStatus && ((item) => onChecklistStatus(item, "open", isToday)));
   // The bottom row of the footer: the quote's credit, with the tag legend on the same line when there is room.
   const metaRow = el("div", "daily-page__footer-meta");
   renderQuote(footerLeft, quote, metaRow);
@@ -111,14 +110,14 @@ export function renderPage(
   footerLeft.appendChild(metaRow);
   renderMiniCalendar(footer, noteDay);
 
-  if (focused?.dataset.cancelIndex !== undefined) {
-    const cancels = [...topRight.querySelectorAll<HTMLElement>("[data-cancel-index]")];
-    const index = Number(focused.dataset.cancelIndex);
-    const next = cancels.find((button) => Number(button.dataset.cancelIndex) >= index);
+  if (focused?.dataset.taskIndex !== undefined) {
+    const boxes = [...topRight.querySelectorAll<HTMLElement>("[data-task-index]")];
+    const index = Number(focused.dataset.taskIndex);
+    const next = boxes.find((button) => Number(button.dataset.taskIndex) >= index);
     const add = topRight.querySelector<HTMLElement>('[aria-label="Add a todo"]');
-    (next ?? add ?? cancels[cancels.length - 1])?.focus({ preventScroll: true });
+    (next ?? add ?? boxes[boxes.length - 1])?.focus({ preventScroll: true });
   } else if (focused?.classList.contains("daily-page__cancelled-count")) {
     const count = notesEl.querySelector<HTMLElement>(".daily-page__cancelled-count");
-    (count ?? topRight.querySelector<HTMLElement>('[role="checkbox"]'))?.focus({ preventScroll: true });
+    (count ?? topRight.querySelector<HTMLElement>("[data-task-index]"))?.focus({ preventScroll: true });
   }
 }

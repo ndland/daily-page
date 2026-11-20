@@ -21,6 +21,14 @@ function labelCentre(timeline: HTMLElement, index: number): number {
 }
 
 describe("spreadShortLabels", () => {
+  it("keeps simultaneous labels aligned when they have separate columns", () => {
+    const timeline = timelineWith(
+      ["- 14:45-15:00 Call", "- 14:45-15:00 Draft <!-- daily-page:task:1 -->"], 1000,
+    );
+    spreadShortLabels(timeline);
+    expect(labelCentre(timeline, 0)).toBeCloseTo(labelCentre(timeline, 1));
+  });
+
   it("keeps back-to-back short labels at least the gap apart", () => {
     const timeline = timelineWith(
       ["- 13:00-13:30 Review notes", "- 13:30-13:45 Quick call", "- 13:45-14:15 Standup"],

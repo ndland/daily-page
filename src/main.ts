@@ -17,7 +17,8 @@ import {
 import { QUOTE_SOURCE } from "./config";
 import { TimelineLine, readTimeline, writeTimeline } from "./entries/format";
 import { LogOutcome, endRunning, logActivity, logNote } from "./entries/log";
-import { ScopeEdit, appendChecklistItem, appendGreatThing, setChecklistItem, setChecklistStatus } from "./entries/edit";
+import { ScopeEdit, appendChecklistItem, appendGreatThing } from "./entries/edit";
+import { changeChecklistStatus } from "./entries/checklist";
 import { DEFAULT_DAILY_PATTERN, dailyNotePath, isSafeVaultPath } from "./logic/paths";
 import { dateFromNotePath, noteDateOf } from "./logic/noteDate";
 import { DEFAULT_NEW_NOTE_CONTENT, resolveNewNote } from "./logic/newNote";
@@ -453,12 +454,10 @@ export default class DailyPagePlugin extends Plugin {
       accent: this.settings.accentColor,
       tagColours: parseTagColours(this.settings.tagColours),
       handlers: {
-        onToggle: (item, checked) => {
-          void this.editFile(sourcePath, (scope) => setChecklistItem(scope, item, checked));
-        },
         onChecklistStatus: this.isReadOnly()
           ? undefined
-          : (item, status) => void this.editFile(sourcePath, (scope) => setChecklistStatus(scope, item, status)),
+          : (item, status, isToday) =>
+            void this.editFile(sourcePath, (scope, minute) => changeChecklistStatus(scope, item, status, minute, isToday)),
         onEdit: (block, isToday) =>
           this.whenWritable(() =>
             openBlockEditor(block, (edit) => void this.editFile(sourcePath, edit), { canStart: isToday }),

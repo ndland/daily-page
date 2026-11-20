@@ -102,26 +102,29 @@ describe("renderPage", () => {
     expect(root.querySelector(".daily-page__checklist-blank")!.classList.contains("is-clickable")).toBe(false);
   });
 
-  it("cancels an open todo separately from its checkbox and frees its slot", () => {
+  it("offers Done, In progress, and Cancelled through the checkbox", () => {
     const root = document.createElement("div");
-    const onToggle = vi.fn();
     const onChecklistStatus = vi.fn();
     const withCancelled = ["## Checklist", "- [ ] Call *Mum*", "- [-] Walk", "- [x] Read"];
     renderPage(root, withCancelled, new Date(2026, 10, 6, 11, 0), null, {
-      handlers: { onToggle, onChecklistStatus },
+      handlers: { onChecklistStatus },
     });
     expect(root.querySelectorAll(".daily-page__checklist-blank")).toHaveLength(4);
-    const cancel = root.querySelector<HTMLButtonElement>('[aria-label="Cancel Call Mum"]')!;
-    cancel.click();
-    expect(onChecklistStatus).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ raw: "- [ ] Call *Mum*" }), "cancelled");
-    expect(onToggle).not.toHaveBeenCalled();
-    expect(root.querySelector('[aria-label="Finish Call Mum"]')).not.toBeNull();
+    const dialog = root.querySelector<HTMLDialogElement>(".daily-page__status-dialog")!;
+    dialog.showModal = vi.fn();
+    dialog.close = vi.fn();
+    root.querySelector<HTMLButtonElement>('[aria-label="Status for Call Mum, to do"]')!.click();
+    const choices = [...dialog.querySelectorAll("button")];
+    expect(choices.map((button) => button.textContent)).toEqual(["Done", "In progress", "Cancelled", "Close"]);
+    expect(root.querySelector('[aria-label="Cancel Call Mum"]')).toBeNull();
+    choices[2].click();
+    expect(onChecklistStatus).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ raw: "- [ ] Call *Mum*" }), "cancelled", true);
   });
 
   it("leaves cancellation unavailable without a writable checklist handler", () => {
     const root = document.createElement("div");
     renderPage(root, ["## Checklist", "- [ ] Walk"], new Date(2026, 10, 6, 11, 0), null);
-    expect(root.querySelector('[aria-label="Cancel Walk"]')).toBeNull();
+    expect(root.querySelector(".daily-page__status-box")).toBeNull();
   });
 });
 

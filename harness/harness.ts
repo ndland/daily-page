@@ -2,7 +2,8 @@ import { renderPage } from "../src/render/page";
 import { keepFitted } from "../src/render/fit";
 import { DEFAULT_TAG_COLOURS } from "../src/defaults";
 import { parseTagColours } from "../src/logic/tags";
-import { setChecklistItem, setChecklistStatus, type ScopeEdit } from "../src/entries/edit";
+import type { ScopeEdit } from "../src/entries/edit";
+import { changeChecklistStatus } from "../src/entries/checklist";
 import { openBlockEditor, openGreatThingEditor, openPlanDialog, openTodoDialog } from "../src/vault/editor";
 import type { StoredQuote } from "../src/logic/quoteCache";
 
@@ -87,7 +88,13 @@ const notesNote = [
 ];
 
 const cancelNote = [
-  ...sampleNote.slice(0, sampleNote.indexOf("## Checklist")),
+  "## Timeline",
+  "- 09:00-10:15 Email #work",
+  "- 13:00-13:45 Review notes",
+  "- 14:20- Review options #work",
+  "- 16:00-17:00 Walk outside #health",
+  "- 09:40 note: Outline the *proposal*",
+  "",
   "## Checklist",
   "- [x] Walk",
   "- [ ] Download Notion",
@@ -104,20 +111,30 @@ const modes: Record<string, string[]> = {
 let lines = [...(modes[params.get("note") ?? ""] ?? sampleNote)];
 
 // A fixed moment, so screenshots and measurements are repeatable: 14:30.
-const NOW = new Date(2026, 10, 6, 14, 30);
+let now = new Date(2026, 10, 6, 14, 30);
 const host = document.getElementById("host");
+const clock = document.getElementById("demo-clock");
+if (params.get("note") === "cancel" && clock) {
+  clock.hidden = false;
+  clock.querySelector("button")?.addEventListener("click", () => {
+    now = new Date(now.getTime() + 15 * 60_000);
+    draw();
+  });
+}
 
 /** Draws the page from `lines`. An edit changes `lines` and draws again, as the plugin does with the note. */
 function draw(): void {
   if (!host) return;
-  renderPage(host, lines, NOW, quote, {
+  const time = clock?.querySelector("time");
+  if (time) time.textContent = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  renderPage(host, lines, now, quote, {
     // ?day=past shows the note as a past day's: no Start now, and a running activity runs to the end of that day.
     date: params.get("day") === "past" ? new Date(2026, 10, 5) : undefined,
     accent: "#bd93f9",
     tagColours: parseTagColours(DEFAULT_TAG_COLOURS),
     handlers: {
-      onToggle: (item, checked) => apply((scope) => setChecklistItem(scope, item, checked)),
-      onChecklistStatus: (item, status) => apply((scope) => setChecklistStatus(scope, item, status)),
+      onChecklistStatus: (item, status, isToday) =>
+        apply((scope, minute) => changeChecklistStatus(scope, item, status, minute, isToday)),
       onEdit: (block, isToday) => openBlockEditor(block, apply, { canStart: isToday }),
       onEditGreatThing: (item) => openGreatThingEditor(item, apply),
       onPlan: (minute) => openPlanDialog(minute, apply),
@@ -134,7 +151,7 @@ function draw(): void {
 
 /** Applies an edit the way the plugin does: a refusal shows its message, and the note stays as it was. */
 function apply(edit: ScopeEdit): void {
-  const outcome = edit(lines, NOW.getHours() * 60 + NOW.getMinutes());
+  const outcome = edit(lines, now.getHours() * 60 + now.getMinutes());
   if (outcome.ok) {
     lines = outcome.lines;
     draw();

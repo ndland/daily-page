@@ -302,8 +302,13 @@
   min-height: calc(0.85rem * 1.15);
 }
 
-.daily-page .daily-page__checklist.has-cancel-actions li {
+.daily-page .daily-page__checklist.has-status-actions li {
   min-height: 24px;
+}
+
+.daily-page .has-status-actions .daily-page__checklist-blank .daily-page__box {
+  align-self: center;
+  margin-inline: calc((24px - 0.8rem) / 2);
 }
 
 .daily-page__todo-line {
@@ -318,6 +323,59 @@
   height: 0.8rem;
   border: 1px solid var(--dp-ink);
   flex-shrink: 0;
+}
+
+.daily-page .daily-page__status-box {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--dp-accent);
+  cursor: pointer;
+}
+
+.daily-page__status-box::before {
+  content: "";
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 1px solid var(--dp-ink);
+  box-sizing: border-box;
+  grid-area: 1 / 1;
+}
+
+.daily-page .daily-page__status-box:hover,
+.daily-page .daily-page__status-box:active {
+  background: transparent;
+}
+
+.daily-page__status-box:hover::before,
+.daily-page__status-box.is-in-progress::before,
+.daily-page__box.is-in-progress {
+  border-color: var(--dp-accent);
+}
+
+.daily-page__box.is-in-progress::after {
+  content: "▶";
+  grid-area: 1 / 1;
+  color: var(--dp-accent);
+  font-size: 0.55rem;
+  line-height: 1;
+}
+
+.daily-page__box.is-in-progress:not(button) {
+  display: inline-grid;
+  place-items: center;
+}
+
+.daily-page .daily-page__status-box:focus-visible {
+  outline: 2px solid var(--dp-accent);
+  outline-offset: 1px;
 }
 
 /* A ticked box shows a check mark in the check colour, drawn with a glyph. */
@@ -458,6 +516,18 @@
   /* --dp-block-accent is set per block when its label has a tag with a colour. */
   background: color-mix(in srgb, var(--dp-block-accent, var(--dp-accent)) 15%, transparent);
   border-left: 3px solid var(--dp-block-accent, var(--dp-accent));
+}
+
+.daily-page__block.is-concurrent {
+  left: calc(var(--dp-lane-left) + 0.25rem);
+  width: calc(var(--dp-lane-width) - 0.375rem);
+  min-height: 2px;
+  padding-inline: 0.2rem;
+}
+
+.daily-page__block.is-concurrent.is-short .daily-page__block-label {
+  left: 0.25rem;
+  max-width: calc(100% - 0.4rem);
 }
 
 /* Short blocks: the label sits just inside the band's left edge, so the text sits close to the timeline like text
@@ -899,6 +969,10 @@
     align-items: flex-start;
   }
 
+  .daily-page .has-status-actions .daily-page__todo-text {
+    padding-block: 0.25rem;
+  }
+
   .daily-page .daily-page__checklist .daily-page__todo-text {
     white-space: normal;
     overflow: visible;
@@ -945,13 +1019,24 @@
   font-size: 1rem;
 }
 
-.daily-page__cancelled-dialog {
+.daily-page__task-dialog {
   max-height: min(80vh, 28rem);
   overflow-y: auto;
 }
 
-.daily-page__cancelled-dialog::backdrop {
+.daily-page__task-dialog::backdrop {
   background: rgba(0, 0, 0, 0.45);
+}
+
+.daily-page__status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.daily-page .daily-page__status-actions button {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--dp-ink);
 }
 
 .daily-page__cancelled-dialog-header,

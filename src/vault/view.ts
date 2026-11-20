@@ -10,7 +10,8 @@
  */
 import { renderPage } from "../render/page";
 import { keepFitted } from "../render/fit";
-import { setChecklistItem, setChecklistStatus, type ScopeEdit } from "../entries/edit";
+import type { ScopeEdit } from "../entries/edit";
+import { changeChecklistStatus } from "../entries/checklist";
 import { MULTIPLE_BLOCKS, NO_PAGE_MESSAGE, countDailyPageBlocks, scopeOf } from "../logic/scope";
 import { parseTagColours } from "../logic/tags";
 import { storedQuoteFromSettings } from "../logic/quoteCache";
@@ -120,12 +121,10 @@ async function draw(liveText?: string): Promise<void> {
     accent: pluginSettings()?.accentColor ?? VIEW_SETTINGS.accent,
     tagColours: parseTagColours(pluginSettings()?.tagColours ?? VIEW_SETTINGS.tagColours),
     handlers: {
-      onToggle: (item, checked) => {
-        void editNote(path, (scope) => setChecklistItem(scope, item, checked));
-      },
       onChecklistStatus: app.plugins?.plugins?.[PLUGIN_ID]?.isReadOnly?.()
         ? undefined
-        : (item, status) => void editNote(path, (scope) => setChecklistStatus(scope, item, status)),
+        : (item, status, isToday) =>
+          void editNote(path, (scope, minute) => changeChecklistStatus(scope, item, status, minute, isToday)),
       onEdit: (block, isToday) => openBlockEditor(block, (edit) => void editNote(path, edit), { canStart: isToday }),
       onPlan: (minute) => openPlanDialog(minute, (edit) => void editNote(path, edit)),
       onEditGreatThing: (item) => openGreatThingEditor(item, (edit) => void editNote(path, edit)),

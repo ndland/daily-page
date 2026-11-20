@@ -35,6 +35,23 @@ describe("axisOffset", () => {
 });
 
 describe("layoutTimeline", () => {
+  it("places overlapping manual and task activities side by side without narrowing later blocks", () => {
+    const timeline = readTimeline([
+      "## Timeline", "- 09:00-10:00 Email", "- 09:15-09:45 Notes <!-- daily-page:task:1 -->",
+      "- 09:30- Design <!-- daily-page:task:2 -->", "- 10:00-11:00 Walk",
+    ]);
+    const blocks = layoutTimeline(timeline, at("10:00"));
+    expect(blocks.map((block) => block.lane)).toEqual([
+      { index: 0, count: 3, group: 0 }, { index: 1, count: 3, group: 0 }, { index: 2, count: 3, group: 0 }, undefined,
+    ]);
+  });
+
+  it("shows a newly started task beside an activity already running in the same minute", () => {
+    const timeline = readTimeline(["## Timeline", "- 09:00- Email", "- 09:30- Notes <!-- daily-page:task:1 -->"]);
+    const blocks = layoutTimeline(timeline, at("09:30"));
+    expect(blocks.map((block) => block.lane)).toEqual([{ index: 0, count: 2, group: 0 }, { index: 1, count: 2, group: 0 }]);
+  });
+
   it("places an activity from 09:00 to 13:30 on the axis", () => {
     const [block] = layoutTimeline(readTimeline(["## Timeline", "- 09:00-13:30 Deep work"]), at("14:00"));
     expect(block.topPct).toBeCloseTo(pctOf(180));

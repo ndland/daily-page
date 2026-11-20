@@ -126,7 +126,7 @@ describe("markdown in the page's text", () => {
     const parent = document.createElement("div");
     renderChecklist(parent, readChecklist(["## Checklist", "- [ ] Call *Mum*"]), vi.fn());
     expect(parent.querySelector("li em")?.textContent).toBe("Mum");
-    expect(parent.querySelector(".daily-page__box")!.getAttribute("aria-label")).toBe("Finish Call Mum");
+    expect(parent.querySelector(".daily-page__box")!.getAttribute("aria-label")).toBe("Status for Call Mum, to do");
   });
 
   it("applies to finished todos, with a plain tooltip", () => {

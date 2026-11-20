@@ -83,12 +83,15 @@ describe("the todo list's empty boxes", () => {
   });
 
   it("does not make a todo's own box add a todo", () => {
-    const onToggle = vi.fn();
+    const onStatus = vi.fn();
     const onAdd = vi.fn();
     const parent = document.createElement("div");
-    renderChecklist(parent, readChecklist(["## Checklist", "- [ ] Walk"]), onToggle, onAdd);
+    renderChecklist(parent, readChecklist(["## Checklist", "- [ ] Walk"]), onStatus, onAdd);
+    const dialog = parent.querySelector("dialog")!;
+    dialog.showModal = vi.fn();
     parent.querySelector<HTMLElement>(".daily-page__box")!.click();
-    expect(onToggle).toHaveBeenCalledTimes(1);
+    expect(dialog.showModal).toHaveBeenCalledOnce();
+    expect(onStatus).not.toHaveBeenCalled();
     expect(onAdd).not.toHaveBeenCalled();
   });
 });

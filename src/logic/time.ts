@@ -1,4 +1,6 @@
 export const MINUTES_PER_DAY = 24 * 60;
+/** The page ends at 03:00 the following morning. */
+export const DAY_END_MINUTE = 3 * 60;
 
 const TIME_PATTERN = /^(\d{2}):(\d{2})$/;
 
