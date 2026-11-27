@@ -1,1 +1,6 @@
-npx --no -- commitlint --edit "$1"
+# Node lives in the dev container, not on the host: run there when the host has none.
+if command -v npx >/dev/null 2>&1; then
+  npx --no -- commitlint --edit "$1"
+else
+  dx npx --no -- commitlint --edit "$1"
+fi

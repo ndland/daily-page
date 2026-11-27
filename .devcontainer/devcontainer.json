@@ -1,0 +1,31 @@
+// Created by dev-init from github.com/ndland/dotfiles templates/devcontainer.
+// Toolchain versions come from the repo's mise.toml; this file only builds the box.
+{
+  "name": "daily-page",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "remoteUser": "vscode",
+  // Published to the host so the browser (and the Claude browser pane) can reach dev servers.
+  // Dev servers must listen on 0.0.0.0 inside the container.
+  "appPort": [],
+  "containerEnv": {
+    "MISE_YES": "1",
+    "MISE_TRUSTED_CONFIG_PATHS": "${containerWorkspaceFolder}"
+  },
+  "remoteEnv": {
+    "PATH": "/home/vscode/.local/bin:/home/vscode/.local/share/mise/shims:${containerEnv:PATH}"
+  },
+  "mounts": [
+    // Agents share their global config with the host (CLAUDE.md, AGENTS.md, settings).
+    "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind",
+    "source=${localEnv:HOME}/.codex,target=/home/vscode/.codex,type=bind",
+    // Tool installs are cached across all repos; dependencies stay per checkout.
+    "source=devc-mise-cache,target=/home/vscode/.local/share/mise,type=volume",
+    "source=${devcontainerId}-node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume",
+    // Windows vaults, for `npm run install:vault -- /vaults/Second-Brain`.
+    "source=/mnt/c/Users/Nick Land/Documents/GitHub,target=/vaults,type=bind"
+  ],
+  "postCreateCommand": "bash .devcontainer/post-create.sh"
+}
